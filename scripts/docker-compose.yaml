@@ -8,7 +8,7 @@ services:
       - POSTGRESQL_PASSWORD=postgres
       - POSTGRESQL_DATABASE=accrual
     ports:
-      - '5432:5432'
+      - '5434:5432'
 
   gophermart:
     image: 'bitnami/postgresql:latest'
@@ -18,3 +18,21 @@ services:
       - POSTGRESQL_DATABASE=gophermart
     ports:
       - '5433:5432'
+
+  accrual_test:
+    image: 'bitnami/postgresql:latest'
+    environment:
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=postgres
+      - POSTGRESQL_DATABASE=accrual_test
+    ports:
+      - '5435:5432'
+
+  gophermart_test:
+    image: 'bitnami/postgresql:latest'
+    environment:
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=postgres
+      - POSTGRESQL_DATABASE=gophermart_test
+    ports:
+      - '5436:5432'

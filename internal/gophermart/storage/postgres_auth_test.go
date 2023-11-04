@@ -7,13 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-	var testUser = struct {
-		login    string
-		password string
-	}{
-		login:    "testuser",
-		password: "testpassword",
-	}
+var testUser = struct {
+	login    string
+	password string
+}{
+	login:    "testuser",
+	password: "testpassword",
+}
 
 func TestStorage_CreateUser(t *testing.T) {
 	userID, err := testAuthDB.CreateUser(context.Background(), testUser.login, testUser.password)
