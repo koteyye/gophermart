@@ -7,6 +7,8 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+// Временный конфиг для тестового запуска
+
 type Config struct {
 	Address string `env:"RUN_ADDRESS"`
 	DSN string `env:"DATABASE_URI"`

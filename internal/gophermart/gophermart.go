@@ -13,6 +13,7 @@ import (
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
 )
 
+// Run временный, для тестового запуска
 func Run(args []string) error {
 	config, err := config.GetConfig()
 	if err != nil {

@@ -1,14 +1,34 @@
 package storage
 
-import ("github.com/google/uuid")
+import (
+
+	"github.com/google/uuid"
+)
 
 // Возможные статусы заказа
+type Status uint8
+
 const (
-	New = "new"
-	Processing = "processing"
-	Processed = "processed"
-	Invalid = "invalid"
+    New Status = iota
+    Processing
+    Processed
+    Invalid
 )
+
+func (s Status) String() string {
+    switch s {
+    case New:
+		return "new"
+    case Processing:
+		return "processing"
+	case Processed:
+		return "processed"
+	case Invalid:
+		return "invalid"
+    }
+	return "unknow"
+}
+
 
 //Структуры для Read операций
 // Order номер заказа
