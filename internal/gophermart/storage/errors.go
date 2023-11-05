@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"errors"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -32,5 +33,6 @@ func mapStorageErr(err error) error {
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFount
 	}
+	slog.Error("other storage error: %w", err)
 	return ErrOther
 }

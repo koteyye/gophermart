@@ -15,7 +15,7 @@ import (
 
 // Тесты для проверки CRUD на тестовой базе
 
-const test_dsn = "postgresql://localhost:5436/gophermart_test?user=postgres&password=postgres&sslmode=disable"
+const test_dsn = "postgresql://localhost:5433/gophermart?user=postgres&password=postgres&sslmode=disable"
 
 var testAuthDB *AuthPostgres
 
