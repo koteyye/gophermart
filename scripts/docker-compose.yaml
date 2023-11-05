@@ -8,7 +8,7 @@ services:
       - POSTGRESQL_PASSWORD=postgres
       - POSTGRESQL_DATABASE=accrual
     ports:
-      - '5432:5432'
+      - '5434:5432'
 
   gophermart:
     image: 'bitnami/postgresql:latest'

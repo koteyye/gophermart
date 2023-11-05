@@ -1,19 +1,51 @@
-package storage_test
+package storage
 
 import (
+	"context"
+	"log/slog"
+	"os"
 	"testing"
 
-	"github.com/golang/mock/gomock"
-	"github.com/google/uuid"
-	mock_storage "github.com/sergeizaitcev/gophermart/internal/gophermart/storage/mocks"
+	"github.com/jackc/pgx/v5"
+	"github.com/pressly/goose/v3"
+	"github.com/sergeizaitcev/gophermart/deployments/gophermart/migrations"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func TestStorage_CreateUser(t *testing.T) {
-	c := gomock.NewController(t)
-	defer c.Finish()
+// Тесты для проверки CRUD на тестовой базе
 
-	s := mock_storage.NewMockAuth(c)
+const test_dsn = "postgresql://localhost:5433/gophermart?user=postgres&password=postgres&sslmode=disable"
 
-	userID := uuid.New()
-	s.EXPECT().CreateUser(gomock.Any(), gomock.Eq("simpleUser"), gomock.Eq("123456")).Return(userID, nil).AnyTimes()
+var testAuthDB *AuthPostgres
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+
+	db, err := pgx.Connect(ctx, test_dsn)
+	if err != nil {
+		slog.Error("can't connect db: %w", err)
+	}
+	defer db.Close(ctx)
+
+	if err := db.Ping(ctx); err != nil {
+		slog.Error("can't ping db: %w", err)
+	}
+
+	sql, err := goose.OpenDBWithDriver("pgx", test_dsn)
+	if err != nil {
+		slog.Error("can't open db with driver: %w", err)
+	}
+
+	if err := migrations.Up(ctx, sql); err != nil {
+		slog.Error("can't migration: %w", err)
+	}
+
+	testAuthDB = NewAuthPostgres(db)
+
+	_, err = db.Exec(ctx, "truncate table users cascade;")
+	if err != nil {
+		slog.Error("can't truncate table test db")
+	}
+	os.Exit(m.Run())
 }

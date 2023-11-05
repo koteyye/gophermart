@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -17,9 +16,23 @@ func NewAuthPostgres(db *pgx.Conn) *AuthPostgres {
 }
 
 func (a *AuthPostgres) CreateUser(ctx context.Context, login string, password string) (uuid.UUID, error) {
-	return uuid.Nil, errors.New("not implemented")
+	var userID uuid.UUID
+
+	err := a.db.QueryRow(ctx, "insert into users (user_name, user_password) values ($1, $2) returning id;", login, password).Scan(&userID)
+	if err != nil {
+		return uuid.Nil, mapStorageErr(err)
+	}
+
+	return userID, nil
 }
 
 func (a *AuthPostgres) GetUser(ctx context.Context, login string, password string) (uuid.UUID, error) {
-	return uuid.Nil, errors.New("not implemented")
+	var userID uuid.UUID
+
+	err := a.db.QueryRow(ctx, "select id from users where user_name = $1 and user_password = $2", login, password).Scan(&userID)
+	if err != nil {
+		return uuid.Nil, mapStorageErr(err)
+	}
+
+	return userID, nil
 }
