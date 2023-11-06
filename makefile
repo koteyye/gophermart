@@ -10,11 +10,11 @@ all: test lint autotest
 
 .PHONY: up
 up:
-	@docker-compose -f ./scripts/docker-compose.yml up -d
+	@docker-compose -f ./scripts/docker-compose.yaml up -d
 
 .PHONY: down
 down:
-	@docker-compose -f ./scripts/docker-compose.yml down
+	@docker-compose -f ./scripts/docker-compose.yaml down
 
 .PHONY: lint
 lint:
