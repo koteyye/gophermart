@@ -4,7 +4,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const cost = bcrypt.DefaultCost + 2
+const cost = bcrypt.MinCost
 
 // Hash возвращает хеш пароля. Длина пароля должна составлять не более
 // 72 символов.
