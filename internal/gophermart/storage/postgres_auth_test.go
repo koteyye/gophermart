@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testUser = struct {
@@ -15,16 +15,22 @@ var testUser = struct {
 	password: "testpassword",
 }
 
-func TestStorage_CreateUser(t *testing.T) {
-	userID, err := testAuthDB.CreateUser(context.Background(), testUser.login, testUser.password)
+func TestAuthStorage(t *testing.T) {
+	db, teardown := testDB(t)
+	defer teardown()
 
-	assert.NoError(t, err)
-	assert.NotNil(t, userID)
-}
+	ctx := context.Background()
 
-func TestStorage_GetUser(t *testing.T) {
-	userID, err := testAuthDB.GetUser(context.Background(), testUser.login, testUser.password)
+	auth := NewAuthPostgres(db)
+	want, err := auth.CreateUser(ctx, testUser.login, testUser.password)
 
-	assert.NoError(t, err)
-	assert.NotNil(t, userID)
+	require.NoError(t, err)
+	require.NotNil(t, want)
+
+	got, err := auth.GetUser(ctx, testUser.login, testUser.password)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+
+	require.Equal(t, want, got)
 }
