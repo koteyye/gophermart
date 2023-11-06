@@ -2,50 +2,34 @@ package storage
 
 import (
 	"context"
-	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/pressly/goose/v3"
-	"github.com/sergeizaitcev/gophermart/deployments/gophermart/migrations"
-
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
+	"github.com/stretchr/testify/require"
+
+	"github.com/sergeizaitcev/gophermart/deployments/gophermart/migrations"
 )
 
 // Тесты для проверки CRUD на тестовой базе
 
-const test_dsn = "postgresql://localhost:5433/gophermart?user=postgres&password=postgres&sslmode=disable"
+const test_dsn = "postgresql://postgres:postgres@localhost:5433/gophermart?sslmode=disable"
 
-var testAuthDB *AuthPostgres
-
-func TestMain(m *testing.M) {
+func testDB(t *testing.T) (*pgx.Conn, func()) {
 	ctx := context.Background()
 
 	db, err := pgx.Connect(ctx, test_dsn)
-	if err != nil {
-		slog.Error("can't connect db: %w", err)
-	}
-	defer db.Close(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close(ctx)) })
 
-	if err := db.Ping(ctx); err != nil {
-		slog.Error("can't ping db: %w", err)
-	}
+	require.NoError(t, db.Ping(ctx))
 
 	sql, err := goose.OpenDBWithDriver("pgx", test_dsn)
-	if err != nil {
-		slog.Error("can't open db with driver: %w", err)
-	}
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sql.Close()) })
 
-	if err := migrations.Up(ctx, sql); err != nil {
-		slog.Error("can't migration: %w", err)
-	}
+	require.NoError(t, migrations.Up(ctx, sql))
 
-	testAuthDB = NewAuthPostgres(db)
-
-	_, err = db.Exec(ctx, "truncate table users cascade;")
-	if err != nil {
-		slog.Error("can't truncate table test db")
-	}
-	os.Exit(m.Run())
+	return db, func() { require.NoError(t, migrations.Down(ctx, sql)) }
 }
