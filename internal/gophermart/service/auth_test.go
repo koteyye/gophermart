@@ -11,7 +11,6 @@ import (
 
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
 	mocks_storage "github.com/sergeizaitcev/gophermart/internal/gophermart/storage/mocks"
-	"github.com/sergeizaitcev/gophermart/pkg/passwords"
 	"github.com/sergeizaitcev/gophermart/pkg/randutil"
 	"github.com/sergeizaitcev/gophermart/pkg/sign"
 )
@@ -29,26 +28,6 @@ func (s signerStub) Sign(payload string) (token string, err error) {
 
 func (s signerStub) Parse(token string) (payload string, err error) {
 	return s.value, s.err
-}
-
-var _ gomock.Matcher = (*hashMatcher)(nil)
-
-type hashMatcher string
-
-func hashedPassword(password string) gomock.Matcher {
-	return hashMatcher(password)
-}
-
-func (h hashMatcher) Matches(x any) bool {
-	hashedPassword, ok := x.(string)
-	if !ok {
-		return false
-	}
-	return passwords.Compare(hashedPassword, string(h))
-}
-
-func (h hashMatcher) String() string {
-	return "is hash"
 }
 
 var tUser = struct {
@@ -75,7 +54,7 @@ func TestAuth(t *testing.T) {
 			auth := service.NewAuth(mockStorage, signer)
 
 			mockStorage.EXPECT().
-				CreateUser(ctx, tUser.login, hashedPassword(tUser.pass)).
+				CreateUser(ctx, tUser.login, tUser.pass).
 				Return(tUser.id, (error)(nil))
 
 			token, err := auth.SignUp(ctx, tUser.login, tUser.pass)
@@ -90,14 +69,14 @@ func TestAuth(t *testing.T) {
 			auth := service.NewAuth(mockStorage, signer)
 
 			mockStorage.EXPECT().
-				CreateUser(ctx, tUser.login, hashedPassword(tUser.pass)).
+				CreateUser(ctx, tUser.login, tUser.pass).
 				Return(uuid.UUID{}, errors.New("error"))
 
 			_, err := auth.SignUp(ctx, tUser.login, tUser.pass)
 			require.Error(t, err)
 
 			mockStorage.EXPECT().
-				CreateUser(ctx, tUser.login, hashedPassword(tUser.pass)).
+				CreateUser(ctx, tUser.login, tUser.pass).
 				Return(tUser.id, (error)(nil))
 
 			_, err = auth.SignUp(ctx, tUser.login, tUser.pass)
@@ -133,12 +112,12 @@ func TestAuth(t *testing.T) {
 			auth := service.NewAuth(mockStorage, signer)
 
 			mockStorage.EXPECT().
-				GetUser(ctx, tUser.login, hashedPassword(tUser.pass)).
+				GetUser(ctx, tUser.login, tUser.pass).
 				Return(tUser.id, (error)(nil))
 
 			token, err := auth.SignIn(ctx, tUser.login, tUser.pass)
 			require.NoError(t, err)
-			require.NotEmpty(t, token)
+			require.Equal(t, signer.value, token)
 		})
 
 		t.Run("error", func(t *testing.T) {
@@ -148,14 +127,14 @@ func TestAuth(t *testing.T) {
 			auth := service.NewAuth(mockStorage, signer)
 
 			mockStorage.EXPECT().
-				GetUser(ctx, tUser.login, hashedPassword(tUser.pass)).
+				GetUser(ctx, tUser.login, tUser.pass).
 				Return(uuid.UUID{}, errors.New("error"))
 
 			_, err := auth.SignIn(ctx, tUser.login, tUser.pass)
 			require.Error(t, err)
 
 			mockStorage.EXPECT().
-				GetUser(ctx, tUser.login, hashedPassword(tUser.pass)).
+				GetUser(ctx, tUser.login, tUser.pass).
 				Return(tUser.id, (error)(nil))
 
 			_, err = auth.SignIn(ctx, tUser.login, tUser.pass)
@@ -202,7 +181,7 @@ func TestAuth(t *testing.T) {
 			auth := service.NewAuth(nil, signer)
 
 			_, err := auth.Verify(ctx, "token")
-			require.ErrorIs(t, err, service.ErrTokenExpired)
+			require.ErrorIs(t, err, sign.ErrTokenExpired)
 		})
 
 		t.Run("error", func(t *testing.T) {

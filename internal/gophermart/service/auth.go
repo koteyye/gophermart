@@ -6,12 +6,8 @@ import (
 	"fmt"
 
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
-	"github.com/sergeizaitcev/gophermart/pkg/passwords"
 	"github.com/sergeizaitcev/gophermart/pkg/sign"
 )
-
-// ErrTokenExpired возвращается, если токен просрочен.
-var ErrTokenExpired = errors.New("token is expired")
 
 // Auth определяет сервис регистрации и аутентификации.
 type Auth struct {
@@ -61,9 +57,6 @@ func (a *Auth) SignIn(ctx context.Context, login, pass string) (token string, er
 func (a *Auth) Verify(ctx context.Context, token string) (id string, err error) {
 	id, err = a.signer.Parse(token)
 	if err != nil {
-		if errors.Is(err, sign.ErrTokenExpired) {
-			err = ErrTokenExpired
-		}
 		return "", fmt.Errorf("token verification: %w", err)
 	}
 
@@ -77,12 +70,7 @@ func (a *Auth) register(ctx context.Context, login, pass string) (id string, err
 		return "", fmt.Errorf("validation: %w", err)
 	}
 
-	hashedPassword, err := passwords.Hash(pass)
-	if err != nil {
-		return "", fmt.Errorf("password hash generation: %w", err)
-	}
-
-	uid, err := a.storage.CreateUser(ctx, login, hashedPassword)
+	uid, err := a.storage.CreateUser(ctx, login, pass)
 	if err != nil {
 		return "", fmt.Errorf("creating a new user: %w", err)
 	}
@@ -97,12 +85,7 @@ func (a *Auth) login(ctx context.Context, login, pass string) (id string, err er
 		return "", fmt.Errorf("validation: %w", err)
 	}
 
-	hashedPassword, err := passwords.Hash(pass)
-	if err != nil {
-		return "", fmt.Errorf("password hash generation: %w", err)
-	}
-
-	uid, err := a.storage.GetUser(ctx, login, hashedPassword)
+	uid, err := a.storage.GetUser(ctx, login, pass)
 	if err != nil {
 		return "", fmt.Errorf("getting a user: %w", err)
 	}
