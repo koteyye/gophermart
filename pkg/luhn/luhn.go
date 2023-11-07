@@ -1,7 +1,7 @@
 package luhn
 
 // Check проверяет контрольную сумму в последовательности цифр произвольной
-// длины по алгоритму Луны.
+// длины по алгоритму Луна.
 func Check(value string) bool {
 	var sum int
 	parity := len(value) % 2
