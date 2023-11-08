@@ -13,9 +13,9 @@ create table if not exists users (
 
 create table if not exists orders (
 	id uuid default gen_random_uuid() not null primary key,
-	order_number int not null,
-	status order_status,
-	accrual int not null,
+	order_number int not null unique,
+	status order_status default 'new',
+	accrual int not null default 0,
 	created_at timestamp default now(),
 	updated_at timestamp default now(),
 	deleted_at timestamp,

@@ -1,18 +1,19 @@
 package storage
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 
 	"log/slog"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // ошибки storage
 var (
 	ErrDuplicate = errors.New("duplicate value")
+	ErrDuplicateOtherUser = errors.New("duplicate value from other user")
 	ErrNotFound  = errors.New("value not found")
 	ErrOther     = errors.New("other storage error")
 )
@@ -32,7 +33,7 @@ func mapStorageErr(err error) error {
 			return ErrOther
 		}
 	}
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}
 	slog.Error(fmt.Sprintf("other storage error: %s", err))
