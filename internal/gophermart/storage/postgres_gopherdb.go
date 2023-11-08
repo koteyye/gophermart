@@ -30,6 +30,9 @@ func (g *GophermartDBPostgres) CreateOrder(ctx context.Context, orderNumber int6
 	// затем добавляем запись если ее нет
 	tx, err := g.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	defer tx.Rollback(ctx)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("trasnaction err: %w", mapStorageErr(err))
+	}
 
 	err = tx.QueryRow(ctx, "select id, user_created from orders where order_number = $1", orderNumber).Scan(&orderID, &creatorUserID)
 	if err != nil {
