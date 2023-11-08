@@ -27,7 +27,7 @@ test:
 .PHONY: build
 build:
 	@go build -buildvcs=false -o ./cmd/accrual/accrual ./cmd/accrual
-	@go build -buildvcs=false -o ./cmd/gophermart/server ./cmd/gophermart
+	@go build -buildvcs=false -o ./cmd/gophermart/gophermart ./cmd/gophermart
 
 .PHONY: autotest
 autotest: build
