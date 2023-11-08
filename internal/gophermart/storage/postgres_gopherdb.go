@@ -36,13 +36,13 @@ func (g *GophermartDBPostgres) CreateOrder(ctx context.Context, orderNumber int6
 		tx.Commit(ctx)
 	}()
 	if err != nil {
-		return uuid.Nil, mapStorageErr(fmt.Errorf("trasnaction err: %w", err))
+		return uuid.Nil, fmt.Errorf("trasnaction err: %w", mapStorageErr(err))
 	}
 
 	err = tx.QueryRow(ctx, "select id, user_created from orders where order_number = $1", orderNumber).Scan(&orderID, &creatorUserID)
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
-			return uuid.Nil, mapStorageErr(fmt.Errorf("select order err: %w", err))
+			return uuid.Nil, fmt.Errorf("select order err: %w", mapStorageErr(err))
 		}
 	}
 
@@ -57,7 +57,7 @@ func (g *GophermartDBPostgres) CreateOrder(ctx context.Context, orderNumber int6
 	
 	err = tx.QueryRow(ctx, "insert into orders (order_number, user_created) values ($1, $2) returning id", orderNumber, userID).Scan(&orderID)
 	if err != nil {
-		return uuid.Nil, mapStorageErr(fmt.Errorf("insert orders err: %w", err))
+		return uuid.Nil, fmt.Errorf("insert orders err: %w", mapStorageErr(err))
 	}
 	return orderID, nil
 }
@@ -66,7 +66,7 @@ func (g *GophermartDBPostgres) CreateOrder(ctx context.Context, orderNumber int6
 func (g *GophermartDBPostgres) UpdateOrder(ctx context.Context, order *UpdateOrder) error {
 	_, err := g.db.Exec(ctx, "update orders set status = $1, accrual = $2 where order_number = $3", order.Status, order.Accrual, order.Number)
 	if err != nil {
-		return mapStorageErr(fmt.Errorf("update order err: %w", err))
+		return fmt.Errorf("update order err: %w", mapStorageErr(err))
 	}
 
 	return nil
@@ -76,7 +76,7 @@ func (g *GophermartDBPostgres) UpdateOrder(ctx context.Context, order *UpdateOrd
 func (g *GophermartDBPostgres) UpdateOrderStatus(ctx context.Context, orderNumber int64, orderStatus Status) error {
 	_, err := g.db.Exec(ctx, "update orders set status = $1 where order_number = $2", orderStatus, orderNumber)
 	if err != nil {
-		return mapStorageErr(fmt.Errorf("update order status: %w", err))
+		return fmt.Errorf("update order status: %w", mapStorageErr(err))
 	}
 	return nil
 }
@@ -87,7 +87,7 @@ func (g *GophermartDBPostgres) GetOrderByNumber(ctx context.Context, orderNumber
 	row := g.db.QueryRow(ctx, "select id, order_number, status, accrual, user_created from orders where order_number = $1 and deleted_at is null", orderNumber)
 	err := row.Scan(&order.ID, &order.OrderNumber, &order.Status, &order.Accrual, &order.UserID)
 	if err != nil {
-		return nil, mapStorageErr(fmt.Errorf("select order err: %w", err))
+		return nil, fmt.Errorf("select order err: %w", mapStorageErr(err))
 	}
 	return &order, nil
 }
@@ -96,7 +96,7 @@ func (g *GophermartDBPostgres) GetOrderByNumber(ctx context.Context, orderNumber
 func (g *GophermartDBPostgres) DeleteOrderByNumber(ctx context.Context, orderNumber int64) error {
 	_, err := g.db.Exec(ctx, "update orders set deleted_at = now() where order_number = $1", orderNumber)
 	if err != nil {
-		return mapStorageErr(fmt.Errorf("delete order err: %w", err))
+		return fmt.Errorf("delete order err: %w", mapStorageErr(err))
 	}
 	return nil
 }

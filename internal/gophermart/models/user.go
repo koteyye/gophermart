@@ -1,7 +1,7 @@
 package models
 
 // UserID тип для указания UserID в контексте
-type UserID uint8
+type CtxKey uint8
 
 // CtxUserID константа для добавления/получения значения UserID в/из контекста
-const CtxUserID UserID = iota+1
+const CtxUserID CtxKey = iota+1
