@@ -2,53 +2,55 @@ package config
 
 import (
 	"errors"
-	"flag"
+	"fmt"
 
-	"github.com/caarlos0/env/v6"
+	"log/slog"
+
+	"github.com/caarlos0/env/v10"
 )
 
-// Временный конфиг для тестового запуска
-
+// Config определяет конфигурацию для gophermart.
 type Config struct {
-	Address string `env:"RUN_ADDRESS"`
-	DSN string `env:"DATABASE_URI"`
-	AccrualAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	// Уровень логирования.
+	Level slog.Level `env:"LOG_LEVEL"`
+
+	// Адресс запуска сервера.
+	RunAddress string `env:"RUN_ADDRESS"`
+
+	// Строка подключения к БД.
+	DatabaseURI string `env:"DATABASE_URI"`
+
+	// Адресс системы начисления.
+	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
 }
 
-type cliFlag struct {
-	addr string
-	dsn string
-	accAddr string
+// Clone возвращает копию конфигурации.
+func (c *Config) Clone() *Config {
+	c2 := *c
+	return &c2
 }
 
-func GetConfig() (*Config, error) {
-	cliFlag := &cliFlag{}
-
-	//Парсим флаги если они есть
-	flag.StringVar(&cliFlag.addr, "a", "", "server address flag")
-	flag.StringVar(&cliFlag.addr, "d", "", "dsn flag")
-	flag.StringVar(&cliFlag.addr, "r", "", "accrual address flag")
-	flag.Parse()
-
-	//Парсим ENV
-	var config Config
-	if err := env.Parse(&config); err != nil {
-		return nil, err
+// Validate возвращает ошибку, если одно из полей конфигурации не валидно.
+func (c *Config) Validate() error {
+	if c.RunAddress == "" {
+		return errors.New("the run address must be not empty")
 	}
+	if c.DatabaseURI == "" {
+		return errors.New("the database uri must be not empty")
+	}
+	if c.AccrualSystemAddress == "" {
+		return errors.New("the address of the accrual system should not be empty")
+	}
+	return nil
+}
 
-	if config.Address == "" {
-		config.Address = cliFlag.addr
+// Parse парсит переменные окружения и устанавливает их в переданную конфигурацию.
+func Parse(c *Config) error {
+	c2 := c.Clone()
+	err := env.Parse(c2)
+	if err != nil {
+		return fmt.Errorf("parsing env: %w", err)
 	}
-	if config.DSN == "" {
-		config.DSN = cliFlag.dsn
-	}
-	if config.AccrualAddress == "" {
-		config.AccrualAddress = cliFlag.accAddr
-	}
-
-	if config.Address == "" && config.AccrualAddress == "" && config.DSN == "" {
-		return nil, errors.New("config can't be empty")
-	}
-
-	return &config, nil
+	*c = *c2
+	return nil
 }
