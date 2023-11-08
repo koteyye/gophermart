@@ -29,15 +29,7 @@ func (g *GophermartDBPostgres) CreateOrder(ctx context.Context, orderNumber int6
 	// Запускаем транзацкию чтобы сначала проверить наличие в БД добавляемого номера заказа и кто его добавил
 	// затем добавляем запись если ее нет
 	tx, err := g.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
-	defer func() {
-		if err != nil {
-			tx.Rollback(ctx)
-		}
-		tx.Commit(ctx)
-	}()
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("trasnaction err: %w", mapStorageErr(err))
-	}
+	defer tx.Rollback(ctx)
 
 	err = tx.QueryRow(ctx, "select id, user_created from orders where order_number = $1", orderNumber).Scan(&orderID, &creatorUserID)
 	if err != nil {
@@ -59,6 +51,7 @@ func (g *GophermartDBPostgres) CreateOrder(ctx context.Context, orderNumber int6
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("insert orders err: %w", mapStorageErr(err))
 	}
+	tx.Commit(ctx)
 	return orderID, nil
 }
 
