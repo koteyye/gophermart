@@ -19,20 +19,33 @@ type Command struct {
 
 // NewCommand возвращает новый экземпляр Command.
 func NewCommand() *Command {
-	fs := flag.NewFlagSet("gophermart", flag.ContinueOnError)
-
-	// Отключение автоматического срабатывания при парсинге флагов.
-	fs.Usage = func() {}
-
-	return &Command{
-		fs: fs,
+	cmd := &Command{
+		fs: flag.NewFlagSet("gophermart", flag.ContinueOnError),
 		actual: &config.Config{
-			Level: slog.LevelInfo,
+			Level:         slog.LevelInfo,
+			SecretKeyPath: "secret_key.txt",
 		},
 	}
+	cmd.init()
+	return cmd
 }
 
-// Usage печает формат использования команды.
+func (cmd *Command) init() {
+	// Отключение автоматического срабатывания Usage
+	// в случае возникновения ошибки при парсинге флагов.
+	cmd.fs.Usage = func() {}
+
+	a := cmd.actual
+
+	cmd.fs.StringVar(&a.RunAddress, "a", a.RunAddress, "run address")
+	cmd.fs.StringVar(&a.DatabaseURI, "d", a.DatabaseURI, "database uri")
+	cmd.fs.StringVar(&a.AccrualSystemAddress, "r", a.AccrualSystemAddress, "accrual system address")
+	cmd.fs.StringVar(&a.SecretKeyPath, "s", a.SecretKeyPath, "secret key path")
+	cmd.fs.TextVar(&a.Level, "v", a.Level, "logging level")
+	cmd.fs.DurationVar(&a.TokenTTL, "t", a.TokenTTL, "token lifetime")
+}
+
+// Usage печатает формат использования команды.
 func (cmd *Command) Usage() {
 	fmt.Fprintf(cmd.fs.Output(), "Usage of %s:\n", cmd.fs.Name())
 	cmd.fs.PrintDefaults()
@@ -42,22 +55,11 @@ func (cmd *Command) Usage() {
 func (cmd *Command) Parse(args []string) error {
 	c := cmd.actual.Clone()
 
-	cmd.fs.TextVar(&c.Level, "v", cmd.actual.Level, "logging level")
-	cmd.fs.StringVar(&c.RunAddress, "a", cmd.actual.RunAddress, "run address")
-	cmd.fs.StringVar(&c.DatabaseURI, "d", cmd.actual.DatabaseURI, "database uri")
-	cmd.fs.StringVar(
-		&c.AccrualSystemAddress,
-		"r",
-		cmd.actual.AccrualSystemAddress,
-		"accrual system address",
-	)
-
 	err := cmd.fs.Parse(args)
 	if err != nil {
+		cmd.actual = c
 		return fmt.Errorf("parsing flags: %w", err)
 	}
-
-	cmd.actual = c
 
 	return nil
 }
@@ -65,28 +67,27 @@ func (cmd *Command) Parse(args []string) error {
 // Run запускает gophermart и блокируется до тех пор, пока не сработает
 // контекст или функция не вернёт ошибку.
 func (cmd *Command) Run(ctx context.Context) error {
-	cfg, err := cmd.initConfig()
+	c := cmd.actual.Clone()
+
+	err := initConfig(c)
 	if err != nil {
 		return fmt.Errorf("init config: %w", err)
 	}
 
-	srv := server.New(cfg)
-
+	srv := server.New(c)
 	return srv.Run(ctx)
 }
 
-func (cmd *Command) initConfig() (*config.Config, error) {
-	cfg := cmd.actual.Clone()
-
-	err := config.Parse(cfg)
+func initConfig(c *config.Config) error {
+	err := config.Parse(c)
 	if err != nil {
-		return nil, fmt.Errorf("parsing: %w", err)
+		return fmt.Errorf("parsing: %w", err)
 	}
 
-	err = cfg.Validate()
+	err = c.Validate()
 	if err != nil {
-		return nil, fmt.Errorf("validation: %w", err)
+		return fmt.Errorf("validation: %w", err)
 	}
 
-	return cfg, nil
+	return nil
 }

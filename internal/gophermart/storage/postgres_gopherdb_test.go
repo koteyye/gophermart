@@ -5,17 +5,22 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/models"
 )
 
 // Переменные для создания тестовых пользователей
-var testUser1 = tUser{login: "testuser1", password: "testpassword"}
-var testUser2 = tUser{login: "testuser2", password: "testpassword"}
+var (
+	testUser1 = tUser{login: "testuser1", password: "testpassword"}
+	testUser2 = tUser{login: "testuser2", password: "testpassword"}
+)
 
 // Переменные для ID тестовых пользователей
-var testUser1ID uuid.UUID
-var testUser2ID uuid.UUID
+var (
+	testUser1ID uuid.UUID
+	testUser2ID uuid.UUID
+)
 
 var testOrder int64 = 1234567890
 
@@ -26,41 +31,41 @@ func TestCreateOrder(t *testing.T) {
 	gophermart := NewGophermartPostgres(db)
 	auth := NewAuthPostgres(db)
 
-	//Создаем тестовых пользователей
+	// Создаем тестовых пользователей
 	testUser1ID, err := auth.CreateUser(context.Background(), testUser1.login, testUser1.password)
 	assert.NoError(t, err)
 	testUser2ID, err := auth.CreateUser(context.Background(), testUser2.login, testUser2.password)
 	assert.NoError(t, err)
 
-	testCases := []struct{
-		name string
-		testUser uuid.UUID
+	testCases := []struct {
+		name          string
+		testUser      uuid.UUID
 		otherTestUser uuid.UUID
-		want int64
-		wantErr error
+		want          int64
+		wantErr       error
 	}{
 		{
-			name: "success",
+			name:     "success",
 			testUser: testUser1ID,
-			want: testOrder,
-			wantErr: nil,
+			want:     testOrder,
+			wantErr:  nil,
 		},
 		{
-			name: "duplicate current user",
+			name:     "duplicate current user",
 			testUser: testUser1ID,
-			want: testOrder,
-			wantErr: ErrDuplicate,
+			want:     testOrder,
+			wantErr:  ErrDuplicate,
 		},
 		{
-			name: "duplicate other user",
+			name:     "duplicate other user",
 			testUser: testUser2ID,
-			want: testOrder,
-			wantErr: ErrDuplicateOtherUser,
+			want:     testOrder,
+			wantErr:  ErrDuplicateOtherUser,
 		},
 	}
 
 	for _, test := range testCases {
-		ctx := context.WithValue(context.Background(), models.CtxUserID, test.testUser)
+		ctx := context.WithValue(context.Background(), models.KeyUserID, test.testUser)
 		got, err := gophermart.CreateOrder(ctx, testOrder)
 		if test.wantErr != nil {
 			assert.ErrorIs(t, err, test.wantErr)
@@ -79,7 +84,7 @@ func TestUpdateOrder(t *testing.T) {
 	auth := NewAuthPostgres(db)
 
 	testUser1ID, err := auth.CreateUser(context.Background(), testUser1.login, testUser1.password)
-	ctx := context.WithValue(context.Background(), models.CtxUserID, testUser1ID)
+	ctx := context.WithValue(context.Background(), models.KeyUserID, testUser1ID)
 	_, err = gophermart.CreateOrder(ctx, testOrder)
 
 	err = gophermart.UpdateOrder(context.Background(), testUpdateData)
@@ -94,7 +99,7 @@ func TestUpdateOrderStatus(t *testing.T) {
 	auth := NewAuthPostgres(db)
 
 	testUser1ID, err := auth.CreateUser(context.Background(), testUser1.login, testUser1.password)
-	ctx := context.WithValue(context.Background(), models.CtxUserID, testUser1ID)
+	ctx := context.WithValue(context.Background(), models.KeyUserID, testUser1ID)
 	_, err = gophermart.CreateOrder(ctx, testOrder)
 
 	err = gophermart.UpdateOrderStatus(context.Background(), testOrder, 3)
@@ -109,7 +114,7 @@ func TestGetOrderByNumber(t *testing.T) {
 	auth := NewAuthPostgres(db)
 
 	testUser1ID, err := auth.CreateUser(context.Background(), testUser1.login, testUser1.password)
-	ctx := context.WithValue(context.Background(), models.CtxUserID, testUser1ID)
+	ctx := context.WithValue(context.Background(), models.KeyUserID, testUser1ID)
 	_, err = gophermart.CreateOrder(ctx, testOrder)
 
 	order, err := gophermart.GetOrderByNumber(context.Background(), testOrder)
@@ -125,7 +130,7 @@ func TestDeleteOrderByNumber(t *testing.T) {
 	auth := NewAuthPostgres(db)
 
 	testUser1ID, err := auth.CreateUser(context.Background(), testUser1.login, testUser1.password)
-	ctx := context.WithValue(context.Background(), models.CtxUserID, testUser1ID)
+	ctx := context.WithValue(context.Background(), models.KeyUserID, testUser1ID)
 	_, err = gophermart.CreateOrder(ctx, testOrder)
 
 	err = gophermart.DeleteOrderByNumber(context.Background(), testOrder)

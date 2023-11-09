@@ -60,6 +60,8 @@ func (a *Auth) Verify(ctx context.Context, token string) (id string, err error) 
 		return "", fmt.Errorf("token verification: %w", err)
 	}
 
+	// TODO: добавить проверку на наличие ID в базе.
+
 	return id, nil
 }
 
