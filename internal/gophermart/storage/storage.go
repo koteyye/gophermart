@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/sergeizaitcev/gophermart/deployments/accrual/migrations"
+	"github.com/sergeizaitcev/gophermart/deployments/gophermart/migrations"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/config"
 )
 
