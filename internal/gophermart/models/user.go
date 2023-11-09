@@ -1,7 +1,9 @@
 package models
 
-// UserID тип для указания UserID в контексте
+// CtxKey определяет ключ для передачи значения через контекст.
 type CtxKey uint8
 
-// CtxUserID константа для добавления/получения значения UserID в/из контекста
-const CtxUserID CtxKey = iota+1
+const (
+	// KeyUserID константа для добавления/получения значения UserID в/из контекста
+	KeyUserID CtxKey = iota + 1
+)
