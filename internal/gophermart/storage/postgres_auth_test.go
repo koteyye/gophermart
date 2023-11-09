@@ -7,10 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testUser = struct {
-	login    string
+type tUser struct {
+	login string
 	password string
-}{
+}
+
+var testUser = tUser{
 	login:    "testuser",
 	password: "testpassword",
 }

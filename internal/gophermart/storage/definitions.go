@@ -37,8 +37,6 @@ type OrderItem struct {
 	OrderNumber int64 `db:"order_number"`
 	Status string `db:"status"`
 	Accrual int64 `db:"accrual"`
-	CreatedAt string `db:"created_at"`
-	UploadAt string `db:"updated_at"`
 	UserID uuid.UUID `db:"user_created"`
 }
 
@@ -61,7 +59,7 @@ type BalanceOperationItem struct {
 // UpdateOrder обновление заказа
 type UpdateOrder struct {
 	Number int64
-	Status string
+	Status Status
 	Accrual int64
 }
 
