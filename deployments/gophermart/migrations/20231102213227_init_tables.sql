@@ -2,6 +2,8 @@
 -- +goose StatementBegin
 create type order_status as enum ('new', 'processed', 'processing', 'invalid');
 
+create type balance_operations_state as enum ('run', 'done', 'error');
+
 create table if not exists users (
 	id uuid default gen_random_uuid() not null primary key,
 	user_name varchar(128) not null unique,
@@ -26,7 +28,8 @@ create table if not exists orders (
 create table if not exists balance (
 	id uuid default gen_random_uuid() not null primary key,
 	user_id uuid not null,
-	current_balance int not null,
+	current_balance int not null default 0,
+	withdrawn int not null default 0,
 	created_at timestamp default now(),
 	updated_at timestamp default now(),
 	deleted_at timestamp,
@@ -38,6 +41,7 @@ create table if not exists balance_operations (
 	order_id uuid,
 	balance_id uuid,
 	sum_operation int,
+	operation_state balance_operations_state default 'run',
 	created_at timestamp default now(),
 	updated_at timestamp default now(),
 	deleted_at timestamp,
@@ -57,4 +61,6 @@ drop table if exists orders;
 drop table if exists users;
 
 drop type order_status;
+
+drop type balance_operations_state;
 -- +goose StatementEnd

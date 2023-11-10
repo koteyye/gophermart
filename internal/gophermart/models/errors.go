@@ -1,4 +1,4 @@
-package storage
+package models
 
 import (
 	"errors"
@@ -14,6 +14,7 @@ var (
 	ErrDuplicateOtherUser = errors.New("duplicate value from other user")
 	ErrNotFound           = errors.New("value not found")
 	ErrOther              = errors.New("other storage error")
+	ErrBalanceBelowZero   = errors.New("balance can't be below zero")
 )
 
 // обрабатываемые ошибки pgx
@@ -21,7 +22,7 @@ const (
 	PqDuplicateErr = "23505"
 )
 
-func mapStorageErr(err error) error {
+func MapStorageErr(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {

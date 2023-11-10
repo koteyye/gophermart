@@ -8,7 +8,7 @@ import (
 )
 
 type tUser struct {
-	login string
+	login    string
 	password string
 }
 

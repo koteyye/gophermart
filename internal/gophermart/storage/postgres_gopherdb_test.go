@@ -22,7 +22,8 @@ var (
 	testUser2ID uuid.UUID
 )
 
-var testOrder int64 = 1234567890
+var testOrder string = "1234567890"
+var testOrder2 string = "1234567891"
 
 func TestCreateOrder(t *testing.T) {
 	db, teardown := testDB(t)
@@ -41,7 +42,7 @@ func TestCreateOrder(t *testing.T) {
 		name          string
 		testUser      uuid.UUID
 		otherTestUser uuid.UUID
-		want          int64
+		want          string
 		wantErr       error
 	}{
 		{
@@ -54,13 +55,13 @@ func TestCreateOrder(t *testing.T) {
 			name:     "duplicate current user",
 			testUser: testUser1ID,
 			want:     testOrder,
-			wantErr:  ErrDuplicate,
+			wantErr:  models.ErrDuplicate,
 		},
 		{
 			name:     "duplicate other user",
 			testUser: testUser2ID,
 			want:     testOrder,
-			wantErr:  ErrDuplicateOtherUser,
+			wantErr:  models.ErrDuplicateOtherUser,
 		},
 	}
 
@@ -75,7 +76,7 @@ func TestCreateOrder(t *testing.T) {
 }
 
 func TestUpdateOrder(t *testing.T) {
-	testUpdateData := &UpdateOrder{Number: testOrder, Status: 2, Accrual: 100}
+	testUpdateData := &UpdateOrder{Order: testOrder, Status: 2, Accrual: 100}
 
 	db, teardown := testDB(t)
 	defer teardown()
@@ -122,6 +123,24 @@ func TestGetOrderByNumber(t *testing.T) {
 	assert.NotNil(t, order)
 }
 
+func TestGetOrdersByUser(t *testing.T) {
+	db, teardown := testDB(t)
+	defer teardown()
+
+	gophermart := NewGophermartPostgres(db)
+	auth := NewAuthPostgres(db)
+
+	testUser1ID, err := auth.CreateUser(context.Background(), testUser1.login, testUser1.password)
+	ctx := context.WithValue(context.Background(), models.KeyUserID, testUser1ID)
+	_, err = gophermart.CreateOrder(ctx, testOrder)
+	_, err = gophermart.CreateOrder(ctx, testOrder2)
+	assert.NoError(t, err)
+
+	orders, err := gophermart.GetOrdersByUser(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, orders, 2)
+}
+
 func TestDeleteOrderByNumber(t *testing.T) {
 	db, teardown := testDB(t)
 	defer teardown()
@@ -135,4 +154,87 @@ func TestDeleteOrderByNumber(t *testing.T) {
 
 	err = gophermart.DeleteOrderByNumber(context.Background(), testOrder)
 	assert.NoError(t, err)
+}
+
+// TestBalanceOperation - комплексный тест с балансовыми операциями
+func TestBalanceOperation(t *testing.T) {
+	db, teardown := testDB(t)
+	defer teardown()
+
+	gophermart := NewGophermartPostgres(db)
+	auth := NewAuthPostgres(db)
+	testUser1ID, err := auth.CreateUser(context.Background(), testUser1.login, testUser1.password)
+	ctx := context.WithValue(context.Background(), models.KeyUserID, testUser1ID)
+	_, err = gophermart.CreateOrder(ctx, testOrder)
+	_, err = gophermart.CreateOrder(ctx, testOrder2)
+	assert.NoError(t, err)
+
+	//Создание балансовой операции
+	balanceOperationID, err := gophermart.CreateBalanceOperation(ctx, 100, testOrder)
+	assert.NotEqual(t, uuid.Nil, balanceOperationID)
+	assert.NoError(t, err)
+
+	//Обновление состояния балансовой операции
+	err = gophermart.UpdateBalanceOperation(ctx, testOrder, 1)
+	assert.NoError(t, err)
+
+	//Получение балансовой операции по номеру заказа
+	balanceOperation, err := gophermart.GetBalanceOperationByOrder(ctx, testOrder)
+	assert.NotNil(t, balanceOperation)
+	assert.NoError(t, err)
+
+	//Создаем вторую балансовую операцию
+	_, err = gophermart.CreateBalanceOperation(ctx, 200, testOrder2)
+	assert.NoError(t, err)
+
+	//Получаем список балансовых операций по текущему пользователю
+	balanceOperations, err := gophermart.GetBalanceOperation(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, balanceOperations, 2)
+
+	//Удаляем балансовую операцию
+	err = gophermart.DeleteBalanceOperationByOrderID(ctx, testOrder)
+	assert.NoError(t, err)
+
+	//Еще раз проверяем список балансовых операций по текущему пользователю
+	postBalanceOperations, err := gophermart.GetBalanceOperation(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, postBalanceOperations, 1)
+}
+
+// TestBalance - комплексный тест с балансом
+func TestBalance(t *testing.T) {
+	db, teardown := testDB(t)
+	defer teardown()
+
+	gophermart := NewGophermartPostgres(db)
+	auth := NewAuthPostgres(db)
+	testUser1ID, err := auth.CreateUser(context.Background(), testUser1.login, testUser1.password)
+	ctx := context.WithValue(context.Background(), models.KeyUserID, testUser1ID)
+	assert.NoError(t, err)
+
+	//Проверяем баланс текущего пользователя
+	balance, err := gophermart.GetBalanceByUserID(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, balance)
+
+	//Инкрементем баланс текущего пользователя
+	err = gophermart.IncrementBalance(ctx, 200)
+	assert.NoError(t, err)
+
+	postBalance, err := gophermart.GetBalanceByUserID(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(200), postBalance.CurrentBalance)
+
+	//Декрементим баланс текущего пользователя
+	err = gophermart.DecrementBalance(ctx, 100)
+	assert.NoError(t, err)
+
+	post2Balance, err := gophermart.GetBalanceByUserID(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(100), post2Balance.CurrentBalance)
+
+	//Проверяем ошибку декрмента если баланс будет <0
+	err = gophermart.DecrementBalance(ctx, 300)
+	assert.ErrorIs(t, err, models.ErrBalanceBelowZero)
 }

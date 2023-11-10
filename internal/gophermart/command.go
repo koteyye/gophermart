@@ -23,7 +23,7 @@ func NewCommand() *Command {
 		fs: flag.NewFlagSet("gophermart", flag.ContinueOnError),
 		actual: &config.Config{
 			Level:         slog.LevelInfo,
-			SecretKeyPath: "secret_key.txt",
+			SecretKeyPath: "../../secret_key.txt",
 		},
 	}
 	cmd.init()
