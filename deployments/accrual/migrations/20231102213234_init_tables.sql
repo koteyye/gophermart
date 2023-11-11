@@ -4,7 +4,7 @@ create type order_status as enum ('registered', 'invalid', 'processing', 'proces
 comment on type order_status is 'возможные статусы заказа';
 
 create type rewards as enum ('percent', 'natural');
-comment on type rewards is 'возможные типы вознагрождений';
+comment on type rewards is 'возможные типы вознаграждений';
 
 create table orders (
     id uuid not null default gen_random_uuid() unique,
@@ -15,10 +15,10 @@ create table orders (
     updated_at timestamp not null default now(),
     deleted_at timestamp
 );
-comment on table orders is 'зарегистрированные заказы на расчет вознагрождений';
+comment on table orders is 'зарегистрированные заказы на расчет вознаграждений';
 comment on column orders.order_number is 'номер заказа';
 comment on column orders.status is 'статус заказа';
-comment on column orders.accrual is 'сумма вознагрождения по заказу';
+comment on column orders.accrual is 'сумма вознаграждения по заказу';
 
 create table matches (
     id uuid not null default gen_random_uuid() unique,
@@ -29,10 +29,10 @@ create table matches (
     updated_at timestamp not null default now(),
     deleted_at timestamp
 );
-comment on table matches is 'товары с их механиками вознагрождения';
+comment on table matches is 'товары с их механиками вознаграждения';
 comment on column matches.match_name is 'название товара';
-comment on column matches.reward is 'сумма вознагрождения';
-comment on column matches.reward_type is 'механика вознагрождения';
+comment on column matches.reward is 'сумма вознаграждения';
+comment on column matches.reward_type is 'механика вознаграждения';
 
 create table goods (
     id uuid not null default gen_random_uuid(),
@@ -43,7 +43,7 @@ create table goods (
     foreign key (order_id) references orders(id),
     foreign key (match_id) references matches(id)
 );
-comment on table goods is 'товары в заказе с их стоимостью и вознагрождением';
+comment on table goods is 'товары в заказе с их стоимостью и вознаграждением';
 -- +goose StatementEnd
 
 -- +goose Down
