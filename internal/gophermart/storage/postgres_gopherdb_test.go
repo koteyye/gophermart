@@ -188,16 +188,16 @@ func TestBalanceOperation(t *testing.T) {
 	assert.NoError(t, err)
 
 	//Получаем список балансовых операций по текущему пользователю
-	balanceOperations, err := gophermart.GetBalanceOperation(ctx)
+	balanceOperations, err := gophermart.GetBalanceOperationByUser(ctx)
 	assert.NoError(t, err)
 	assert.Len(t, balanceOperations, 2)
 
 	//Удаляем балансовую операцию
-	err = gophermart.DeleteBalanceOperationByOrderID(ctx, testOrder)
+	err = gophermart.DeleteBalanceOperationByOrder(ctx, testOrder)
 	assert.NoError(t, err)
 
 	//Еще раз проверяем список балансовых операций по текущему пользователю
-	postBalanceOperations, err := gophermart.GetBalanceOperation(ctx)
+	postBalanceOperations, err := gophermart.GetBalanceOperationByUser(ctx)
 	assert.NoError(t, err)
 	assert.Len(t, postBalanceOperations, 1)
 }

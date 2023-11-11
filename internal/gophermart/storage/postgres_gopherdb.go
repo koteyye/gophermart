@@ -19,7 +19,7 @@ func NewGophermartPostgres(db *pgxpool.Pool) *GophermartDBPostgres {
 	return &GophermartDBPostgres{db: db}
 }
 
-// CreateOrder - создает в таблице orders запись с номером заказа на статусе new
+// CreateOrder создает в таблице orders запись с номером заказа на статусе new
 func (g *GophermartDBPostgres) CreateOrder(
 	ctx context.Context,
 	order string,
@@ -116,7 +116,7 @@ func (g *GophermartDBPostgres) GetOrderByNumber(
 	return &orderInfo, nil
 }
 
-//GetOrdersByUser - возвращает все заказы по текущему пользователю
+// GetOrdersByUser - возвращает все заказы по текущему пользователю
 func (g *GophermartDBPostgres) GetOrdersByUser(ctx context.Context) ([]*OrderItem, error) {
 	userID := ctx.Value(models.KeyUserID)
 
@@ -210,7 +210,7 @@ func (g *GophermartDBPostgres) UpdateBalanceOperation(
 }
 
 // DeleteBalanceOperation - удаление балансовой операции по номеру заказа
-func (g *GophermartDBPostgres) DeleteBalanceOperationByOrderID(
+func (g *GophermartDBPostgres) DeleteBalanceOperationByOrder(
 	ctx context.Context,
 	order string,
 ) error {
@@ -264,7 +264,7 @@ func (g *GophermartDBPostgres) GetBalanceOperationByOrder(
 }
 
 // GetBalanceOperation - возвращает все балансовые операции текущему пользователю отсортированных от старых к новым
-func (g *GophermartDBPostgres) GetBalanceOperation(
+func (g *GophermartDBPostgres) GetBalanceOperationByUser(
 	ctx context.Context,
 ) ([]*BalanceOperationItem, error) {
 	var balanceID uuid.UUID

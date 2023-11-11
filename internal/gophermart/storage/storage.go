@@ -41,14 +41,14 @@ type Orders interface {
 // Balance - CRUD с балансом
 type Balance interface {
 	// CRUD BalanceOperation
-	CreateBalanceOperation(ctx context.Context, operation *BalanceOperationItem) (uuid.UUID, error)
-	UpdateBalanceOperation(ctx context.Context, order string, done bool) error
-	DeleteBalanceOperation(ctx context.Context, order string) error
-	GetBalanceOperationByOrderID(
+	CreateBalanceOperation(ctx context.Context, operation int64, order string) (uuid.UUID, error)
+	UpdateBalanceOperation(ctx context.Context, order string, operationState BalanceOperationState) error
+	DeleteBalanceOperationByOrder(ctx context.Context, order string) error
+	GetBalanceOperationByOrder(
 		ctx context.Context,
 		order string,
 	) (*BalanceOperationItem, error)
-	GetBalanceOperation(
+	GetBalanceOperationByUser(
 		ctx context.Context,
 	) ([]*BalanceOperationItem, error)
 	// CRUD Balance
@@ -89,6 +89,10 @@ func (s *Storage) Close() error {
 
 func (s *Storage) Auth() Auth {
 	return NewAuthPostgres(s.pool)
+}
+
+func (s *Storage) GophermartDB() GophermartDB {
+	return NewGophermartPostgres(s.pool)
 }
 
 func newPool(ctx context.Context, dsn string) (pool *pgxpool.Pool, err error) {
