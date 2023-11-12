@@ -313,8 +313,8 @@ func (g *GophermartDBPostgres) GetBalanceByUserID(
 func (g *GophermartDBPostgres) IncrementBalance(
 	ctx context.Context,
 	incrementSum int64,
+	userID uuid.UUID,
 ) error {
-	userID := ctx.Value(models.KeyUserID)
 
 	_, err := g.db.Exec(ctx, "update balance set current_balance = current_balance + $1, updated_at = now() where user_id = $2", incrementSum, userID)
 	if err != nil {
@@ -328,8 +328,8 @@ func (g *GophermartDBPostgres) IncrementBalance(
 func (g *GophermartDBPostgres) DecrementBalance(
 	ctx context.Context,
 	decrementSum int64,
+	userID uuid.UUID,
 ) error {
-	userID := ctx.Value(models.KeyUserID)
 	var currentSum int64
 	var withdrawn int64
 

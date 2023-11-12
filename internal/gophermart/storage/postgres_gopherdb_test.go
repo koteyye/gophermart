@@ -204,7 +204,6 @@ func TestBalance(t *testing.T) {
 	gophermart := NewGophermartPostgres(db)
 	auth := NewAuthPostgres(db)
 	testUser1ID, err := auth.CreateUser(context.Background(), testUser1.login, testUser1.password)
-	ctx := context.WithValue(context.Background(), models.KeyUserID, testUser1ID)
 	assert.NoError(t, err)
 
 	//Проверяем баланс текущего пользователя
@@ -213,7 +212,7 @@ func TestBalance(t *testing.T) {
 	assert.NotNil(t, balance)
 
 	//Инкрементем баланс текущего пользователя
-	err = gophermart.IncrementBalance(ctx, 200)
+	err = gophermart.IncrementBalance(context.Background(), 200, testUser1ID)
 	assert.NoError(t, err)
 
 	postBalance, err := gophermart.GetBalanceByUserID(context.Background(), testUser1ID)
@@ -221,7 +220,7 @@ func TestBalance(t *testing.T) {
 	assert.Equal(t, int64(200), postBalance.CurrentBalance)
 
 	//Декрементим баланс текущего пользователя
-	err = gophermart.DecrementBalance(ctx, 100)
+	err = gophermart.DecrementBalance(context.Background(), 100, testUser1ID)
 	assert.NoError(t, err)
 
 	post2Balance, err := gophermart.GetBalanceByUserID(context.Background(), testUser1ID)
@@ -229,6 +228,6 @@ func TestBalance(t *testing.T) {
 	assert.Equal(t, int64(100), post2Balance.CurrentBalance)
 
 	//Проверяем ошибку декрмента если баланс будет <0
-	err = gophermart.DecrementBalance(ctx, 300)
+	err = gophermart.DecrementBalance(context.Background(), 300, testUser1ID)
 	assert.ErrorIs(t, err, models.ErrBalanceBelowZero)
 }
