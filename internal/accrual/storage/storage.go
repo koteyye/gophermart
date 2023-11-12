@@ -16,7 +16,7 @@ import (
 
 // Accrual методы для CRUD в БД
 type Accrual interface {
-	CreateOrder(ctx context.Context, order string) (uuid.UUID, error)
+	CreateOrderWithGoods(ctx context.Context, order string, goods []Goods) (uuid.UUID, error)
 }
 
 type Storage struct {
