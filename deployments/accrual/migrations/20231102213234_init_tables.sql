@@ -48,13 +48,13 @@ comment on table goods is 'товары в заказе с их стоимост
 
 -- +goose Down
 -- +goose StatementBegin
-drop table goods
+drop table goods;
 
-drop table matches
+drop table matches;
 
-drop table orders
+drop table orders;
 
-drop type rewards
+drop type rewards;
 
-drop type order_status
+drop type order_status;
 -- +goose StatementEnd

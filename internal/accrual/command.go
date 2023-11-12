@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/sergeizaitcev/gophermart/internal/accrual/server"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/config"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/server"
 )
 
-
 type Command struct {
-	fs *flag.FlagSet
+	fs     *flag.FlagSet
 	actual *config.Config
 }
 
@@ -77,6 +76,11 @@ func initConfig(c *config.Config) error {
 	err := config.Parse(c)
 	if err != nil {
 		return fmt.Errorf("parsing: %w", err)
+	}
+
+	err = c.Validate()
+	if err != nil {
+		return fmt.Errorf("validation: %w", err)
 	}
 
 	return nil
