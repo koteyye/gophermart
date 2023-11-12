@@ -23,9 +23,9 @@ func NewGophermartPostgres(db *pgxpool.Pool) *GophermartDBPostgres {
 func (g *GophermartDBPostgres) CreateOrder(
 	ctx context.Context,
 	order string,
+	userID uuid.UUID,
 ) (uuid.UUID, error) {
 	var orderID uuid.UUID
-	userID := ctx.Value(models.KeyUserID)
 
 	// creatorUserID ID пользователя, ранее загрузившего заказ
 	var creatorUserID uuid.UUID
@@ -34,7 +34,7 @@ func (g *GophermartDBPostgres) CreateOrder(
 	// затем добавляем запись если ее нет
 	tx, err := g.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("trasnaction err: %w", models.MapStorageErr(err))
+		return uuid.Nil, fmt.Errorf("trasnaction err: %w", mapStorageErr(err))
 	}
 	defer tx.Rollback(ctx)
 
@@ -42,7 +42,7 @@ func (g *GophermartDBPostgres) CreateOrder(
 		Scan(&orderID, &creatorUserID)
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
-			return uuid.Nil, fmt.Errorf("select order err: %w", models.MapStorageErr(err))
+			return uuid.Nil, fmt.Errorf("select order err: %w", mapStorageErr(err))
 		}
 	}
 
@@ -58,7 +58,7 @@ func (g *GophermartDBPostgres) CreateOrder(
 	err = tx.QueryRow(ctx, "insert into orders (order_number, user_created) values ($1, $2) returning id", order, userID).
 		Scan(&orderID)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("insert orders err: %w", models.MapStorageErr(err))
+		return uuid.Nil, fmt.Errorf("insert orders err: %w", mapStorageErr(err))
 	}
 	tx.Commit(ctx)
 	return orderID, nil
@@ -74,7 +74,7 @@ func (g *GophermartDBPostgres) UpdateOrder(ctx context.Context, order *UpdateOrd
 		order.Order,
 	)
 	if err != nil {
-		return fmt.Errorf("update order err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("update order err: %w", mapStorageErr(err))
 	}
 
 	return nil
@@ -93,7 +93,7 @@ func (g *GophermartDBPostgres) UpdateOrderStatus(
 		order,
 	)
 	if err != nil {
-		return fmt.Errorf("update order status: %w", models.MapStorageErr(err))
+		return fmt.Errorf("update order status: %w", mapStorageErr(err))
 	}
 	return nil
 }
@@ -111,23 +111,22 @@ func (g *GophermartDBPostgres) GetOrderByNumber(
 	)
 	err := row.Scan(&orderInfo.ID, &orderInfo.Order, &orderInfo.Status, &orderInfo.Accrual, &orderInfo.UserID, &orderInfo.UploadedAt)
 	if err != nil {
-		return nil, fmt.Errorf("select order err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("select order err: %w", mapStorageErr(err))
 	}
 	return &orderInfo, nil
 }
 
 // GetOrdersByUser - возвращает все заказы по текущему пользователю
-func (g *GophermartDBPostgres) GetOrdersByUser(ctx context.Context) ([]*OrderItem, error) {
-	userID := ctx.Value(models.KeyUserID)
+func (g *GophermartDBPostgres) GetOrdersByUser(ctx context.Context, userID uuid.UUID) ([]*OrderItem, error) {
 
 	rows, err := g.db.Query(ctx, "select id, order_number, status, accrual, user_created, updated_at from orders where user_created = $1", userID)
 	if err != nil {
-		return nil, fmt.Errorf("select orders by userID err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("select orders by userID err: %w", mapStorageErr(err))
 	}
 
 	orders, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[OrderItem])
 	if err != nil {
-		return nil, fmt.Errorf("scan orders err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("scan orders err: %w", mapStorageErr(err))
 	}
 
 	return orders, nil
@@ -141,7 +140,7 @@ func (g *GophermartDBPostgres) DeleteOrderByNumber(ctx context.Context, order st
 		order,
 	)
 	if err != nil {
-		return fmt.Errorf("delete order err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("delete order err: %w", mapStorageErr(err))
 	}
 	return nil
 }
@@ -151,30 +150,30 @@ func (g *GophermartDBPostgres) CreateBalanceOperation(
 	ctx context.Context,
 	operation int64,
 	order string,
+	userID uuid.UUID,
 ) (uuid.UUID, error) {
 	var bOperationID uuid.UUID
 	var balanceID uuid.UUID
 	var orderID uuid.UUID
-	userID := ctx.Value(models.KeyUserID)
 
 	// Транзакция для получения OrderID и BalanceID, чтоб использовать их для создания Balance operation
 	tx, err := g.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("transaction err: %w", models.MapStorageErr(err))
+		return uuid.Nil, fmt.Errorf("transaction err: %w", mapStorageErr(err))
 	}
 	defer tx.Rollback(ctx)
 
 	if err = tx.QueryRow(ctx, "select id from balance where user_id = $1", userID).Scan(&balanceID); err != nil {
-		return uuid.Nil, fmt.Errorf("select balance err: %w", models.MapStorageErr(err))
+		return uuid.Nil, fmt.Errorf("select balance err: %w", mapStorageErr(err))
 	}
 
 	if err = tx.QueryRow(ctx, "select id from orders where order_number = $1", order).Scan(&orderID); err != nil {
-		return uuid.Nil, fmt.Errorf("select order err: %w", models.MapStorageErr(err))
+		return uuid.Nil, fmt.Errorf("select order err: %w", mapStorageErr(err))
 	}
 
 	err = g.db.QueryRow(ctx, `insert into balance_operations (order_id, balance_id, sum_operation) values ($1, $2, $3) returning id`, orderID, balanceID, operation).Scan(&bOperationID)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("insert balance_operation err: %w", models.MapStorageErr(err))
+		return uuid.Nil, fmt.Errorf("insert balance_operation err: %w", mapStorageErr(err))
 	}
 	tx.Commit(ctx)
 
@@ -192,17 +191,17 @@ func (g *GophermartDBPostgres) UpdateBalanceOperation(
 	// Транзакция для получения OrderID, чтоб затем использовать его для обновления Balance operation
 	tx, err := g.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return fmt.Errorf("transaction err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("transaction err: %w", mapStorageErr(err))
 	}
 	defer tx.Rollback(ctx)
 
 	if err = tx.QueryRow(ctx, "select id from orders where order_number = $1", order).Scan(&orderID); err != nil {
-		return fmt.Errorf("select order err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("select order err: %w", mapStorageErr(err))
 	}
 
 	_, err = tx.Exec(ctx, "update balance_operations set operation_state = $1, updated_at = now() where order_id = $2", operationState, orderID)
 	if err != nil {
-		return fmt.Errorf("update balance_operation err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("update balance_operation err: %w", mapStorageErr(err))
 	}
 	tx.Commit(ctx)
 
@@ -219,17 +218,17 @@ func (g *GophermartDBPostgres) DeleteBalanceOperationByOrder(
 	// Транзакция для получения OrderID, чтоб затем использовать его для удаления Balance operation
 	tx, err := g.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return fmt.Errorf("transaction err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("transaction err: %w", mapStorageErr(err))
 	}
 	defer tx.Rollback(ctx)
 
 	if err = tx.QueryRow(ctx, "select id from orders where order_number = $1", order).Scan(&orderID); err != nil {
-		return fmt.Errorf("select order err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("select order err: %w", mapStorageErr(err))
 	}
 
 	_, err = tx.Exec(ctx, "update balance_operations set deleted_at = now() where order_id = $1", orderID)
 	if err != nil {
-		return fmt.Errorf("update deleted_at balance_operation err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("update deleted_at balance_operation err: %w", mapStorageErr(err))
 	}
 	tx.Commit(ctx)
 
@@ -247,16 +246,16 @@ func (g *GophermartDBPostgres) GetBalanceOperationByOrder(
 	// Транзакция для получения OrderID, чтоб затем использовать его для получения Balance operation
 	tx, err := g.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return nil, fmt.Errorf("transaction err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("transaction err: %w", mapStorageErr(err))
 	}
 	defer tx.Rollback(ctx)
 
 	if err = tx.QueryRow(ctx, "select id from orders where order_number = $1", order).Scan(&orderID); err != nil {
-		return nil, fmt.Errorf("select order err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("select order err: %w", mapStorageErr(err))
 	}
 
 	if err = tx.QueryRow(ctx, "select id, order_id, balance_id, sum_operation, updated_at from balance_operations where order_id = $1 and deleted_at is null", orderID).Scan(&balanceOperation.ID, &balanceOperation.OrderID, &balanceOperation.BalanceID, &balanceOperation.SumOperation, &balanceOperation.UpdatedAt); err != nil {
-		return nil, fmt.Errorf("select balance operation err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("select balance operation err: %w", mapStorageErr(err))
 	}
 	tx.Commit(ctx)
 
@@ -266,29 +265,29 @@ func (g *GophermartDBPostgres) GetBalanceOperationByOrder(
 // GetBalanceOperation - возвращает все балансовые операции текущему пользователю отсортированных от старых к новым
 func (g *GophermartDBPostgres) GetBalanceOperationByUser(
 	ctx context.Context,
+	userID uuid.UUID,
 ) ([]*BalanceOperationItem, error) {
 	var balanceID uuid.UUID
-	userID := ctx.Value(models.KeyUserID)
 
 	// Транзакция для получения BalanceID, чтобы затем использовать его для получения Balance operations
 	tx, err := g.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return nil, fmt.Errorf("transaction err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("transaction err: %w", mapStorageErr(err))
 	}
 	defer tx.Rollback(ctx)
 
 	if err = tx.QueryRow(ctx, "select id from balance where user_id = $1", userID).Scan(&balanceID); err != nil {
-		return nil, fmt.Errorf("select balance err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("select balance err: %w", mapStorageErr(err))
 	}
 
 	rows, err := tx.Query(ctx, "select id, order_id, balance_id, sum_operation, updated_at from balance_operations where balance_id = $1 and deleted_at is null order by updated_at", balanceID)
 	if err != nil {
-		return nil, fmt.Errorf("select balance operation err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("select balance operation err: %w", mapStorageErr(err))
 	}
 
 	balanceOperations, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[BalanceOperationItem])
 	if err != nil {
-		return nil, fmt.Errorf("scan balance operations err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("scan balance operations err: %w", mapStorageErr(err))
 	}
 
 	tx.Commit(ctx)
@@ -299,12 +298,12 @@ func (g *GophermartDBPostgres) GetBalanceOperationByUser(
 // GetBalanceByUserID - возвращает баланс текущего пользователя
 func (g *GophermartDBPostgres) GetBalanceByUserID(
 	ctx context.Context,
+	userID uuid.UUID,
 ) (*BalanceItem, error) {
 	var balance BalanceItem
-	userID := ctx.Value(models.KeyUserID)
 
 	if err := g.db.QueryRow(ctx, "select id, user_id, current_balance, withdrawn from balance where user_id = $1 and deleted_at is null", userID).Scan(&balance.ID, &balance.UserID, &balance.CurrentBalance, &balance.Withdrawn); err != nil {
-		return nil, fmt.Errorf("select balance err: %w", models.MapStorageErr(err))
+		return nil, fmt.Errorf("select balance err: %w", mapStorageErr(err))
 	}
 
 	return &balance, nil
@@ -319,7 +318,7 @@ func (g *GophermartDBPostgres) IncrementBalance(
 
 	_, err := g.db.Exec(ctx, "update balance set current_balance = current_balance + $1, updated_at = now() where user_id = $2", incrementSum, userID)
 	if err != nil {
-		return fmt.Errorf("incerement err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("incerement err: %w", mapStorageErr(err))
 	}
 
 	return nil
@@ -337,12 +336,12 @@ func (g *GophermartDBPostgres) DecrementBalance(
 	//Транзакция для получения текущего баланса и сравнение с декрментом
 	tx, err := g.db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return fmt.Errorf("transaction err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("transaction err: %w", mapStorageErr(err))
 	}
 	defer tx.Rollback(ctx)
 
 	if err = tx.QueryRow(ctx, "select current_balance, withdrawn from balance where user_id = $1", userID).Scan(&currentSum, &withdrawn); err != nil {
-		return fmt.Errorf("select current sum err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("select current sum err: %w", mapStorageErr(err))
 	}
 
 	if currentSum-decrementSum <= 0 {
@@ -351,7 +350,7 @@ func (g *GophermartDBPostgres) DecrementBalance(
 
 	_, err = tx.Exec(ctx, "update balance set current_balance = current_balance - $1, withdrawn = withdrawn + $1, updated_at = now() where user_id = $2", decrementSum, userID)
 	if err != nil {
-		return fmt.Errorf("incerement err: %w", models.MapStorageErr(err))
+		return fmt.Errorf("incerement err: %w", mapStorageErr(err))
 	}
 	tx.Commit(ctx)
 

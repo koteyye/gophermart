@@ -20,6 +20,7 @@ import (
 type Auth interface {
 	CreateUser(ctx context.Context, login string, password string) (uuid.UUID, error)
 	GetUser(ctx context.Context, login string, passwrod string) (uuid.UUID, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (string, error)
 }
 
 // GophermartDB CRUD операции с БД
@@ -30,18 +31,18 @@ type GophermartDB interface {
 
 // Orders - CRUD с заказами
 type Orders interface {
-	CreateOrder(ctx context.Context, order string) (uuid.UUID, error)
+	CreateOrder(ctx context.Context, order string, userID uuid.UUID) (uuid.UUID, error)
 	UpdateOrder(ctx context.Context, order *UpdateOrder) error
 	UpdateOrderStatus(ctx context.Context, order string, orderStatus Status) error
 	DeleteOrderByNumber(ctx context.Context, order string) error
 	GetOrderByNumber(ctx context.Context, order string) (*OrderItem, error)
-	GetOrdersByUser(ctx context.Context) ([]*OrderItem, error)
+	GetOrdersByUser(ctx context.Context, userID uuid.UUID) ([]*OrderItem, error)
 }
 
 // Balance - CRUD с балансом
 type Balance interface {
 	// CRUD BalanceOperation
-	CreateBalanceOperation(ctx context.Context, operation int64, order string) (uuid.UUID, error)
+	CreateBalanceOperation(ctx context.Context, operation int64, order string, userID uuid.UUID) (uuid.UUID, error)
 	UpdateBalanceOperation(ctx context.Context, order string, operationState BalanceOperationState) error
 	DeleteBalanceOperationByOrder(ctx context.Context, order string) error
 	GetBalanceOperationByOrder(
@@ -50,9 +51,10 @@ type Balance interface {
 	) (*BalanceOperationItem, error)
 	GetBalanceOperationByUser(
 		ctx context.Context,
+		userID uuid.UUID,
 	) ([]*BalanceOperationItem, error)
 	// CRUD Balance
-	GetBalanceByUserID(ctx context.Context) (*BalanceItem, error)
+	GetBalanceByUserID(ctx context.Context, userID uuid.UUID) (*BalanceItem, error)
 	IncrementBalance(ctx context.Context, incrementSum int64) error
 	DecrementBalance(ctx context.Context, decrementSum int64) error
 }
