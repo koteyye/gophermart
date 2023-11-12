@@ -55,8 +55,8 @@ type Balance interface {
 	) ([]*BalanceOperationItem, error)
 	// CRUD Balance
 	GetBalanceByUserID(ctx context.Context, userID uuid.UUID) (*BalanceItem, error)
-	IncrementBalance(ctx context.Context, incrementSum int64) error
-	DecrementBalance(ctx context.Context, decrementSum int64) error
+	IncrementBalance(ctx context.Context, incrementSum int64, userID uuid.UUID) error
+	DecrementBalance(ctx context.Context, decrementSum int64, userID uuid.UUID) error
 }
 
 type Storage struct {
