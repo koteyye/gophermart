@@ -35,6 +35,6 @@ func Bytes(n int) []byte {
 //
 // Если n <= 0, то возвращает пустую строку.
 func String(n int) string {
-	b := Bytes(n)	
+	b := Bytes(n)
 	return unsafe.String(unsafe.SliceData(b), len(b))
 }

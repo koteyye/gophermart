@@ -9,7 +9,6 @@ import (
 
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/models"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
 )
 
 // Auth проверяет наличие токена авторизации в запросе и прокидывает в контекст
@@ -29,7 +28,7 @@ func Auth(s *service.Auth) func(http.Handler) http.Handler {
 
 			id, err := s.Verify(ctx, token)
 			if err != nil {
-				if errors.Is(err, storage.ErrNotFound) {
+				if errors.Is(err, models.ErrNotFound) {
 					w.WriteHeader(http.StatusUnauthorized)
 				} else {
 					w.WriteHeader(http.StatusInternalServerError)

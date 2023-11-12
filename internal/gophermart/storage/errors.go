@@ -6,14 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-)
-
-// ошибки storage
-var (
-	ErrDuplicate          = errors.New("duplicate value")
-	ErrDuplicateOtherUser = errors.New("duplicate value from other user")
-	ErrNotFound           = errors.New("value not found")
-	ErrOther              = errors.New("other storage error")
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/models"
 )
 
 // обрабатываемые ошибки pgx
@@ -26,13 +19,13 @@ func mapStorageErr(err error) error {
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 		case PqDuplicateErr:
-			return fmt.Errorf("%w: %s", ErrDuplicate, err)
+			return fmt.Errorf("%w: %s", models.ErrDuplicate, err)
 		default:
-			return fmt.Errorf("%w: %s", ErrOther, err)
+			return fmt.Errorf("%w: %s", models.ErrOther, err)
 		}
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("%w: %s", ErrNotFound, err)
+		return fmt.Errorf("%w: %s", models.ErrNotFound, err)
 	}
-	return fmt.Errorf("%s: %s", ErrOther, err)
+	return fmt.Errorf("%s: %s", models.ErrOther, err)
 }

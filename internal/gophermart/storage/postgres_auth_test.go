@@ -8,7 +8,7 @@ import (
 )
 
 type tUser struct {
-	login string
+	login    string
 	password string
 }
 
@@ -35,4 +35,10 @@ func TestAuthStorage(t *testing.T) {
 	require.NotNil(t, got)
 
 	require.Equal(t, want, got)
+
+	login, err := auth.GetUserByID(ctx, got)
+
+	require.NoError(t, err)
+	require.NotNil(t, login)
+	require.Equal(t, testUser.login, login)
 }

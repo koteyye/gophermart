@@ -13,7 +13,6 @@ import (
 
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/models"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
 )
 
 // handler определяет HTTP-обработчик для gophermart;
@@ -64,7 +63,7 @@ func (h *handler) register(w http.ResponseWriter, r *http.Request) {
 
 	value, err := h.service.Auth.SignUp(ctx, u.Login, u.Password)
 	if err != nil {
-		if errors.Is(err, storage.ErrDuplicate) {
+		if errors.Is(err, models.ErrDuplicate) {
 			w.WriteHeader(http.StatusConflict)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -91,7 +90,7 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 
 	value, err := h.service.Auth.SignIn(ctx, u.Login, u.Password)
 	if err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
+		if errors.Is(err, models.ErrNotFound) {
 			w.WriteHeader(http.StatusUnauthorized)
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)

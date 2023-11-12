@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
@@ -16,12 +16,12 @@ import (
 
 const test_dsn = "postgresql://postgres:postgres@localhost:5433/gophermart?sslmode=disable"
 
-func testDB(t *testing.T) (*pgx.Conn, func()) {
+func testDB(t *testing.T) (*pgxpool.Pool, func()) {
 	ctx := context.Background()
 
-	db, err := pgx.Connect(ctx, test_dsn)
+	db, err := pgxpool.New(ctx, test_dsn)
 	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, db.Close(ctx)) })
+	t.Cleanup(func() { db.Close() })
 
 	require.NoError(t, db.Ping(ctx))
 
