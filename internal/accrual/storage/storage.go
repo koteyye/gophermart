@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/models"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,11 +13,15 @@ import (
 
 	"github.com/sergeizaitcev/gophermart/deployments/accrual/migrations"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/config"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/postgres"
 )
 
 // Accrual методы для CRUD в БД
 type Accrual interface {
-	CreateOrderWithGoods(ctx context.Context, order string, goods []Goods) (uuid.UUID, error)
+	CreateOrderWithGoods(ctx context.Context, order string, goods []*models.Goods) (uuid.UUID, error)
+	UpdateOrder(ctx context.Context, order *models.Order) error
+	UpdateGoodAccrual(ctx context.Context, goodID uuid.UUID, accrual int) error
+	CreateMatch(ctx context.Context, match *models.Match) (uuid.UUID, error)
 }
 
 type Storage struct {
@@ -47,7 +52,7 @@ func (s *Storage) Close() error {
 }
 
 func (s *Storage) Accrual() Accrual {
-	return NewAccrualPostgres(s.pool)
+	return postgres.NewAccrualPostgres(s.pool)
 }
 
 func newPool(ctx context.Context, dsn string) (pool *pgxpool.Pool, err error) {

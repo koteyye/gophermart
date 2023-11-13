@@ -40,10 +40,10 @@ type Order struct {
 }
 
 // Match структура для создания записи в таблице matches
-type Matches struct {
+type Match struct {
 	MatchName string
-	Reward int
-	RewardT RewardType
+	Reward    int
+	Type      RewardType
 }
 
 type RewardType uint8
@@ -62,5 +62,3 @@ func (r RewardType) String() string {
 	}
 	return "unknow"
 }
-
-

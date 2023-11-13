@@ -18,7 +18,7 @@ func NewAccrualPostgres(db *pgxpool.Pool) *AccrualPostgres {
 	return &AccrualPostgres{db: db}
 }
 
-// CreateOrder создание записи о заказе в таблице orders и связанную таблицу goods
+// CreateOrderWithGoods создание записи о заказе в таблице orders и связанную таблицу goods
 func (a *AccrualPostgres) CreateOrderWithGoods(ctx context.Context, order string, goods []*models.Goods) (uuid.UUID, error) {
 	var orderID uuid.UUID
 
@@ -29,7 +29,7 @@ func (a *AccrualPostgres) CreateOrderWithGoods(ctx context.Context, order string
 	}
 	defer tx.Rollback(ctx)
 
-	err = tx.QueryRow(ctx, "insert into orders (order_number) values ($1)", order).Scan(&orderID)
+	err = tx.QueryRow(ctx, "insert into orders (order_number) values ($1) returning id", order).Scan(&orderID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("create order err: %w", models.MapStorageErr(err))
 	}
@@ -63,11 +63,20 @@ func (a *AccrualPostgres) UpdateGoodAccrual(ctx context.Context, goodID uuid.UUI
 	return nil
 }
 
-func (a *AccrualPostgres) CreateMatch(ctx context.Context, match *models.Matches) (uuid.UUID, error) {
+func (a *AccrualPostgres) CreateMatch(ctx context.Context, match *models.Match) (uuid.UUID, error) {
 	var matchID uuid.UUID
-	err := a.db.QueryRow(ctx, "insert into matches (match_name, reward, reward_type) values ($1 $2, $3) returning id", match.MatchName, match.Reward, match.RewardType).Scan(&matchID)
+	err := a.db.QueryRow(ctx, "insert into matches (match_name, reward, reward_type) values ($1, $2, $3) returning id", match.MatchName, match.Reward, match.Type).Scan(&matchID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("create match err: %w", models.MapStorageErr(err))
+	}
+	return matchID, nil
+}
+
+func (a *AccrualPostgres) GetMatchByName(ctx context.Context, matchName string) (uuid.UUID, error) {
+	var matchID uuid.UUID
+	err := a.db.QueryRow(ctx, "select id from matches where match_name in ($1)", matchName).Scan(&matchID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("select match err: %w", models.MapStorageErr(err))
 	}
 	return matchID, nil
 }

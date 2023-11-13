@@ -11,14 +11,14 @@ import (
 // handler определяет HTTP-обработчик для accrual
 // реализует интерфейс http.Handler
 type handler struct {
-	mux *chi.Mux
+	mux     *chi.Mux
 	service *service.Service
 }
 
 // NewHandler возвращает новый экземпляр handler
 func NewHandler(s *service.Service) http.Handler {
 	r := &handler{
-		mux: chi.NewRouter(),
+		mux:     chi.NewRouter(),
 		service: s,
 	}
 	r.init()
