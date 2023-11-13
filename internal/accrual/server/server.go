@@ -41,9 +41,9 @@ func (s *Server) Run(ctx context.Context) error {
 
 func listenAndServe(ctx context.Context, addr string, handler http.Handler) error {
 	srv := &http.Server{
-		Addr: addr,
-		Handler: handler,
-		BaseContext: func(net.Listener) context.Context {return ctx},
+		Addr:        addr,
+		Handler:     handler,
+		BaseContext: func(net.Listener) context.Context { return ctx },
 	}
 
 	errc := make(chan error)
