@@ -2,31 +2,30 @@ package postgres
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/sergeizaitcev/gophermart/deployments/accrual/migrations"
-	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/models"
 	models2 "github.com/sergeizaitcev/gophermart/internal/accrual/models"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-
-
 var (
 	testOrderNumber = "1234567890"
-	testMatchName1 = "testItem1"
-	testMatchName2 = "testItem2"
-	testGoods = []*models.Goods{}
-	testOrder = *&models.Order{}
+	testMatchName1  = "testItem1"
+	testMatchName2  = "testItem2"
+	testGoods       = []*models.Goods{}
+	testOrder       = *&models.Order{}
 )
 
 const test_dsn = "postgresql://postgres:postgres@localhost:5432/accrual?sslmode=disable"
 
-//testDB тест postgres
+// testDB тест postgres
 func testDB(t *testing.T) (*pgxpool.Pool, func()) {
 	ctx := context.Background()
 
@@ -60,7 +59,7 @@ func TestAccrualPostgres(t *testing.T) {
 	//Тест на дубль match
 	matchIDNil, err := accrual.CreateMatch(context.Background(), &models.Match{MatchName: testMatchName1, Reward: 10, Type: 0})
 	assert.ErrorIs(t, err, models2.ErrDuplicate)
-	assert.Nil(t, matchIDNil)
+	assert.Equal(t, uuid.Nil, matchIDNil)
 
 	//Тест получения matchID по имени
 	testMatchID1, err := accrual.GetMatchByName(context.Background(), testMatchName1)
@@ -73,15 +72,21 @@ func TestAccrualPostgres(t *testing.T) {
 	assert.ErrorIs(t, err, models2.ErrNotFound)
 
 	//Тест создания order
-	var testGoods []*models.Goods
-	testGoods = append(testGoods, &models.Goods{MatchID: testMatchID1, Price: 12345})
-	testGoods = append(testGoods, &models.Goods{MatchID: testMatchID2, Price: 123425})
+	testGoods := make([]*models.Goods, 2)
+	testGoods[0] = &models.Goods{MatchID: testMatchID1, Price: 12345}
+	testGoods[1] = &models.Goods{MatchID: testMatchID2, Price: 123425}
 
 	testOrderID, err := accrual.CreateOrderWithGoods(context.Background(), testOrderNumber, testGoods)
 	assert.NoError(t, err)
 	assert.NotNil(t, testOrderID)
 
 	//Тест обновления статуса и суммы вознагрождения orders
-	err = accrual.UpdateOrder(context.Background(), &models.Order{OrderID: testOrderID, Status: 2, Accrual: 500})
+	err = accrual.UpdateOrder(context.Background(), &models.Order{OrderID: testOrderID, Status: 3, Accrual: 500})
 	assert.NoError(t, err)
+
+	//Тест получения заказа
+	want := &models2.OrderOut{Number: testOrderNumber, Status: "processed", Accrual: 500}
+	order, err := accrual.GetOrderWithGoodsByNumber(context.Background(), testOrderNumber)
+	assert.NoError(t, err)
+	assert.Equal(t, order, want)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	models2 "github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/models"
 )
 
@@ -74,9 +75,21 @@ func (a *AccrualPostgres) CreateMatch(ctx context.Context, match *models.Match) 
 
 func (a *AccrualPostgres) GetMatchByName(ctx context.Context, matchName string) (uuid.UUID, error) {
 	var matchID uuid.UUID
+
 	err := a.db.QueryRow(ctx, "select id from matches where match_name in ($1)", matchName).Scan(&matchID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("select match err: %w", models.MapStorageErr(err))
 	}
 	return matchID, nil
+}
+
+func (a *AccrualPostgres) GetOrderWithGoodsByNumber(ctx context.Context, orderNumber string) (*models2.OrderOut, error) {
+	var order models2.OrderOut
+
+	err := a.db.QueryRow(ctx, "select order_number, status, accrual from orders where order_number = $1", orderNumber).Scan(&order.Number, &order.Status, &order.Accrual)
+	if err != nil {
+		return &models2.OrderOut{}, fmt.Errorf("select order err: %w", models.MapStorageErr(err))
+	}
+
+	return &order, nil
 }
