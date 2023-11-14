@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/models"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/storage_models"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,18 +13,18 @@ import (
 
 	"github.com/sergeizaitcev/gophermart/deployments/accrual/migrations"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/config"
-	models2 "github.com/sergeizaitcev/gophermart/internal/accrual/models"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/postgres"
 )
 
 // Accrual методы для CRUD в БД
 type Accrual interface {
-	CreateOrderWithGoods(ctx context.Context, order string, goods []*models.Goods) (uuid.UUID, error)
-	UpdateOrder(ctx context.Context, order *models.Order) error
+	CreateOrderWithGoods(ctx context.Context, order string, goods []*storage_models.Goods) (uuid.UUID, error)
+	UpdateOrder(ctx context.Context, order *storage_models.Order) error
 	UpdateGoodAccrual(ctx context.Context, goodID uuid.UUID, accrual int) error
-	CreateMatch(ctx context.Context, match *models.Match) (uuid.UUID, error)
+	CreateMatch(ctx context.Context, match *storage_models.Match) (uuid.UUID, error)
 	GetMatchByName(ctx context.Context, matchName string) (uuid.UUID, error)
-	GetOrderWithGoodsByNumber(ctx context.Context, orderNumber string) (*models2.OrderOut, error)
+	GetOrderWithGoodsByNumber(ctx context.Context, orderNumber string) (*models.OrderOut, error)
 }
 
 type Storage struct {

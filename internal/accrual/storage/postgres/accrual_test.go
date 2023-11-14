@@ -3,14 +3,14 @@ package postgres
 import (
 	"context"
 	"github.com/google/uuid"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/storage_models"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/sergeizaitcev/gophermart/deployments/accrual/migrations"
-	models2 "github.com/sergeizaitcev/gophermart/internal/accrual/models"
-	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/models"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,8 +19,8 @@ var (
 	testOrderNumber = "1234567890"
 	testMatchName1  = "testItem1"
 	testMatchName2  = "testItem2"
-	testGoods       = []*models.Goods{}
-	testOrder       = *&models.Order{}
+	testGoods       = []*storage_models.Goods{}
+	testOrder       = *&storage_models.Order{}
 )
 
 const test_dsn = "postgresql://postgres:postgres@localhost:5432/accrual?sslmode=disable"
@@ -51,14 +51,14 @@ func TestAccrualPostgres(t *testing.T) {
 	accrual := NewAccrualPostgres(db)
 
 	//Тест создания match
-	_, err := accrual.CreateMatch(context.Background(), &models.Match{MatchName: testMatchName1, Reward: 10, Type: 0})
+	_, err := accrual.CreateMatch(context.Background(), &storage_models.Match{MatchName: testMatchName1, Reward: 10, Type: 0})
 	assert.NoError(t, err)
-	_, err = accrual.CreateMatch(context.Background(), &models.Match{MatchName: testMatchName2, Reward: 10, Type: 1})
+	_, err = accrual.CreateMatch(context.Background(), &storage_models.Match{MatchName: testMatchName2, Reward: 10, Type: 1})
 	assert.NoError(t, err)
 
 	//Тест на дубль match
-	matchIDNil, err := accrual.CreateMatch(context.Background(), &models.Match{MatchName: testMatchName1, Reward: 10, Type: 0})
-	assert.ErrorIs(t, err, models2.ErrDuplicate)
+	matchIDNil, err := accrual.CreateMatch(context.Background(), &storage_models.Match{MatchName: testMatchName1, Reward: 10, Type: 0})
+	assert.ErrorIs(t, err, models.ErrDuplicate)
 	assert.Equal(t, uuid.Nil, matchIDNil)
 
 	//Тест получения matchID по имени
@@ -69,23 +69,23 @@ func TestAccrualPostgres(t *testing.T) {
 
 	//Тест отсутствия matchID
 	_, err = accrual.GetMatchByName(context.Background(), "testMatchNothing")
-	assert.ErrorIs(t, err, models2.ErrNotFound)
+	assert.ErrorIs(t, err, models.ErrNotFound)
 
 	//Тест создания order
-	testGoods := make([]*models.Goods, 2)
-	testGoods[0] = &models.Goods{MatchID: testMatchID1, Price: 12345}
-	testGoods[1] = &models.Goods{MatchID: testMatchID2, Price: 123425}
+	testGoods := make([]*storage_models.Goods, 2)
+	testGoods[0] = &storage_models.Goods{MatchID: testMatchID1, Price: 12345}
+	testGoods[1] = &storage_models.Goods{MatchID: testMatchID2, Price: 123425}
 
 	testOrderID, err := accrual.CreateOrderWithGoods(context.Background(), testOrderNumber, testGoods)
 	assert.NoError(t, err)
 	assert.NotNil(t, testOrderID)
 
 	//Тест обновления статуса и суммы вознагрождения orders
-	err = accrual.UpdateOrder(context.Background(), &models.Order{OrderID: testOrderID, Status: 3, Accrual: 500})
+	err = accrual.UpdateOrder(context.Background(), &storage_models.Order{OrderID: testOrderID, Status: 3, Accrual: 500})
 	assert.NoError(t, err)
 
 	//Тест получения заказа
-	want := &models2.OrderOut{Number: testOrderNumber, Status: "processed", Accrual: 500}
+	want := &models.OrderOut{Number: testOrderNumber, Status: "processed", Accrual: 500}
 	order, err := accrual.GetOrderWithGoodsByNumber(context.Background(), testOrderNumber)
 	assert.NoError(t, err)
 	assert.Equal(t, order, want)

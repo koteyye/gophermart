@@ -1,4 +1,4 @@
-package models
+package storage_models
 
 import "github.com/google/uuid"
 
