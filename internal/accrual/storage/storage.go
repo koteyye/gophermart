@@ -13,6 +13,7 @@ import (
 
 	"github.com/sergeizaitcev/gophermart/deployments/accrual/migrations"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/config"
+	models2 "github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/postgres"
 )
 
@@ -22,6 +23,8 @@ type Accrual interface {
 	UpdateOrder(ctx context.Context, order *models.Order) error
 	UpdateGoodAccrual(ctx context.Context, goodID uuid.UUID, accrual int) error
 	CreateMatch(ctx context.Context, match *models.Match) (uuid.UUID, error)
+	GetMatchByName(ctx context.Context, matchName string) (uuid.UUID, error)
+	GetOrderWithGoodsByNumber(ctx context.Context, orderNumber string) (*models2.OrderOut, error)
 }
 
 type Storage struct {
