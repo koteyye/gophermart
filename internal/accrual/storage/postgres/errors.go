@@ -1,4 +1,4 @@
-package storage_models
+package postgres
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ const (
 	PqDuplicateErr = "23505"
 )
 
-func MapStorageErr(err error) error {
+func mapStorageErr(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {

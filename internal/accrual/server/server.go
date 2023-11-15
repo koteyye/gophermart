@@ -9,7 +9,7 @@ import (
 
 	"github.com/sergeizaitcev/gophermart/internal/accrual/config"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/service"
-	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/postgres"
 )
 
 // Server определяет HTTP-сервер для accrual
@@ -27,7 +27,7 @@ func New(config *config.Config) *Server {
 // Run запускает сервер и блокируется до тех пор, пока не сработает контекст
 // или функция не вернет ошибку
 func (s *Server) Run(ctx context.Context) error {
-	storage, err := storage.NewStorage(ctx, s.config)
+	storage, err := postgres.NewStorage(ctx, s.config)
 	if err != nil {
 		return fmt.Errorf("create a new storage: %w", err)
 	}
