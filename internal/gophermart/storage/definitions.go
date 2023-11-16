@@ -55,11 +55,11 @@ func (b BalanceOperationState) String() string {
 
 // OrderItem заказ
 type OrderItem struct {
-	ID      uuid.UUID `db:"id"`
-	Order   string `db:"order_number"`
-	Status  string `db:"status"`
-	Accrual int64 `db:"accrual"`
-	UserID  uuid.UUID `db:"user_created"`
+	ID         uuid.UUID `db:"id"`
+	Order      string    `db:"order_number"`
+	Status     string    `db:"status"`
+	Accrual    int64     `db:"accrual"`
+	UserID     uuid.UUID `db:"user_created"`
 	UploadedAt time.Time `db:"updated_at"`
 }
 
@@ -68,7 +68,7 @@ type BalanceItem struct {
 	ID             uuid.UUID
 	UserID         uuid.UUID
 	CurrentBalance int64
-	Withdrawn int64
+	Withdrawn      int64
 }
 
 // BalanceOperationItem BalanceOperation операции с балансом по заказам
@@ -77,7 +77,7 @@ type BalanceOperationItem struct {
 	OrderID      uuid.UUID `db:"order_id"`
 	BalanceID    uuid.UUID `db:"balance_id"`
 	SumOperation int64     `db:"sum_operation"`
-	UpdatedAt time.Time `db:"updated_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
 }
 
 //Структуры для Create / Update операций

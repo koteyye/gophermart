@@ -8,7 +8,6 @@ import (
 	"github.com/caarlos0/env/v10"
 )
 
-
 type Config struct {
 	// Уровень логирования
 	Level slog.Level `env:"LOG_LEVEL"`
