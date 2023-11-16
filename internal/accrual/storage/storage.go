@@ -59,14 +59,14 @@ type Goods struct {
 type Order struct {
 	OrderID uuid.UUID
 	Status  OrderStatus
-	Accrual int
+	Accrual float64
 }
 
 // OrderOut структура для выгрузки записи из таблицы orders
 type OrderOut struct {
 	OrderNumber string
 	Status      string
-	Accrual     int
+	Accrual     float64
 }
 
 // Match структура для создания записи в таблице matches
