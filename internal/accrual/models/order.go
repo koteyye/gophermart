@@ -3,8 +3,8 @@ package models
 import "github.com/sergeizaitcev/gophermart/pkg/monetary"
 
 type Order struct {
-	Number string `json:"order"`
-	Goods  []Goods
+	Number string  `json:"order"`
+	Goods  []Goods `json:"goods"`
 }
 
 type Goods struct {

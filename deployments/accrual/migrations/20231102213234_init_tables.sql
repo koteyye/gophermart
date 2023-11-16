@@ -39,7 +39,7 @@ create table goods (
     order_id uuid not null,
     match_id uuid not null,
     price float not null,
-    accrual int default 0,
+    accrual float default 0,
     foreign key (order_id) references orders(id),
     foreign key (match_id) references matches(id)
 );

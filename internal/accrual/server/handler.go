@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -40,10 +41,21 @@ func (h *handler) init() {
 }
 
 func (h *handler) registerOrder(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusTeapot)
+	o, err := parseOrder(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-	json.NewEncoder(w).Encode(map[string]string{"response": "I'm not implemented yet, but someday it will happen"})
+	ctx := r.Context()
+
+	if h.service.Accrual.CheckOrder(ctx, o.Number) {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	h.service.Accrual.CreateOrder(context.Background(), &o)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (h *handler) createMatch(w http.ResponseWriter, r *http.Request) {

@@ -21,8 +21,6 @@ var (
 	testInvalidOrder = "12343245250"
 	testMatchName1   = "testItem1"
 	testMatchName2   = "testItem2"
-	testGoods        = []*storage.Goods{}
-	testOrder        = *&storage.Order{}
 )
 
 const test_dsn = "postgresql://postgres:postgres@localhost:5432/accrual?sslmode=disable"
@@ -75,8 +73,8 @@ func TestAccrualPostgres(t *testing.T) {
 
 	//Тест создания order
 	testGoods := make([]*storage.Goods, 2)
-	testGoods[0] = &storage.Goods{MatchID: testMatchID1, Price: 12345}
-	testGoods[1] = &storage.Goods{MatchID: testMatchID2, Price: 123425}
+	testGoods[0] = &storage.Goods{MatchID: testMatchID1.MatchID, Price: 12345}
+	testGoods[1] = &storage.Goods{MatchID: testMatchID2.MatchID, Price: 123425}
 
 	testOrderID, err := accrual.CreateOrderWithGoods(context.Background(), testOrderNumber, testGoods)
 	assert.NoError(t, err)
@@ -95,4 +93,9 @@ func TestAccrualPostgres(t *testing.T) {
 	order, err := accrual.GetOrderWithGoodsByNumber(context.Background(), testOrderNumber)
 	assert.NoError(t, err)
 	assert.Equal(t, order, want)
+
+	//Тест получения goods
+	goods, err := accrual.GetGoodsByOrderID(context.Background(), testOrderID)
+	assert.NoError(t, err)
+	assert.NotNil(t, goods)
 }

@@ -19,9 +19,9 @@ type Accrual interface {
 	CreateOrderWithGoods(ctx context.Context, order string, goods []*Goods) (uuid.UUID, error)
 	CreateInvalidOrder(ctx context.Context, order string) error
 	UpdateOrder(ctx context.Context, order *Order) error
-	UpdateGoodAccrual(ctx context.Context, goodID uuid.UUID, accrual int) error
+	UpdateGoodAccrual(ctx context.Context, matchID uuid.UUID, accrual float64) error
 	CreateMatch(ctx context.Context, match *Match) (uuid.UUID, error)
-	GetMatchByName(ctx context.Context, matchName string) (uuid.UUID, error)
+	GetMatchByName(ctx context.Context, matchName string) (*MatchOut, error)
 	GetOrderWithGoodsByNumber(ctx context.Context, orderNumber string) (*OrderOut, error)
 }
 
@@ -51,8 +51,10 @@ func (o OrderStatus) String() string {
 
 // Goods структура для создания записи в таблице goods
 type Goods struct {
-	MatchID uuid.UUID
-	Price   int
+	GoodID  uuid.UUID `db:"id"`
+	MatchID uuid.UUID `db:"match_id"`
+	Price   float64   `db:"price"`
+	Accrual float64   `db:"accrual"`
 }
 
 // Order структура для обновления записи в таблице orders
@@ -91,4 +93,12 @@ func (r RewardType) String() string {
 		return "natural"
 	}
 	return "unknow"
+}
+
+// MatchOut структура для получения записи из таблицы matches
+type MatchOut struct {
+	MatchID   uuid.UUID
+	MatchName string
+	Reward    int
+	Type      string
 }
