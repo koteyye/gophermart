@@ -1,4 +1,4 @@
-package server
+package accrual
 
 import (
 	"context"
@@ -8,35 +8,34 @@ import (
 	"time"
 
 	"github.com/sergeizaitcev/gophermart/internal/accrual/config"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/server"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/service"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage/postgres"
+	"github.com/sergeizaitcev/gophermart/pkg/commands"
 )
 
-// Server определяет HTTP-сервер для accrual
-type Server struct {
-	config *config.Config
+
+func Run(ctx context.Context) error {
+	cmd := commands.New("accrual", runServer)
+	return cmd.Execute(ctx)
 }
 
-// New возвращает новый экземпляр Server
-func New(config *config.Config) *Server {
-	return &Server{
-		config: config,
-	}
-}
-
-// Run запускает сервер и блокируется до тех пор, пока не сработает контекст
-// или функция не вернет ошибку
-func (s *Server) Run(ctx context.Context) error {
-	storage, err := postgres.NewStorage(ctx, s.config)
+func runServer(ctx context.Context, c *config.Config) error {
+	storage, err := postgres.Connect(c)
 	if err != nil {
 		return fmt.Errorf("create a new storage: %w", err)
 	}
 	defer storage.Close()
 
-	service := service.NewService(storage)
-	mux := NewHandler(service)
+	err = storage.Up(ctx)
+	if err != nil {
+		return fmt.Errorf("migration up: %w", err)
+	}
 
-	return listenAndServe(ctx, s.config.RunAddress, mux)
+	service := service.NewService(storage)
+	mux := server.NewHandler(service)
+
+	return listenAndServe(ctx, c.RunAddress, mux)
 }
 
 func listenAndServe(ctx context.Context, addr string, handler http.Handler) error {

@@ -1,14 +1,17 @@
 package service
 
-import "github.com/sergeizaitcev/gophermart/internal/accrual/storage"
+import (
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
+)
 
 // Service определяет бизнес-логику accrual
 type Service struct {
-	accrual *Accrual
+	Accrual *Accrual
 }
 
+// NewService возвращает экземпляр Service
 func NewService(s storage.Storage) *Service {
 	return &Service{
-		accrual: NewAccrual(s),
+		Accrual: NewAccrual(s),
 	}
 }

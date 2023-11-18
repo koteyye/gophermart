@@ -2,10 +2,8 @@ package config
 
 import (
 	"errors"
-	"fmt"
+	"flag"
 	"log/slog"
-
-	"github.com/caarlos0/env/v10"
 )
 
 type Config struct {
@@ -19,12 +17,6 @@ type Config struct {
 	DatabaseURI string `env:"DATABASE_URI"`
 }
 
-// Clone возвращает копию конфигурации
-func (c *Config) Clone() *Config {
-	c2 := *c
-	return &c2
-}
-
 // Validate возвращает ошибку, если одно из полей конфигурации не валидно
 func (c *Config) Validate() error {
 	if c.RunAddress == "" {
@@ -36,13 +28,8 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// Parse парсит переменные окружения и устанавливает их в переданную конфигурацию
-func Parse(c *Config) error {
-	c2 := c.Clone()
-	err := env.Parse(c)
-	if err != nil {
-		*c = *c2
-		return fmt.Errorf("parsing env: %w", err)
-	}
-	return nil
+func (c *Config) SetFlags(fs *flag.FlagSet) {
+	fs.StringVar(&c.RunAddress, "a", "", "run address")
+	fs.StringVar(&c.DatabaseURI, "d", "", "database uri")
+	fs.TextVar(&c.Level, "v", slog.LevelInfo, "logging level")
 }
