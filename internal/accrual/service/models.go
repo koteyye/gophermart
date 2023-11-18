@@ -2,24 +2,23 @@ package service
 
 import (
 	"github.com/google/uuid"
-	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
 
 // workerOrder структура заказа для обработчика
 type workerOrder struct {
 	orderID uuid.UUID
 	goods   []*workerGoods
-	accrual monetary.Unit
+	accrual float64
 }
 
 // workerGoods структура для элемента содержимого заказа
 type workerGoods struct {
 	goodID     uuid.UUID
 	matchID    uuid.UUID
-	price      monetary.Unit
-	reward     int
+	price      float64
+	reward     float64
 	rewardType string
-	accrual    monetary.Unit
+	accrual    float64
 }
 
 const (

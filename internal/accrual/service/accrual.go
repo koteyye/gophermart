@@ -3,14 +3,13 @@ package service
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
-	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
 
 // Accrual определяет сервис расчета вознаграждений
@@ -25,16 +24,16 @@ func NewAccrual(accrual storage.Accrual) *Accrual {
 	}
 }
 
-func (a *Accrual) CheckOrder(ctx context.Context, orderNumber string) bool {
-	_, err := a.storage.GetOrderWithGoodsByNumber(ctx, orderNumber)
+func (a *Accrual) CheckOrder(ctx context.Context, orderNumber string) (bool, error) {
+	_, err := a.storage.GetOrderByNumber(ctx, orderNumber)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return true
+		if errors.Is(err, models.ErrNotFound) {
+			return true, nil
 		}
 		slog.Error(err.Error())
-		return false
+		return false, err
 	}
-	return false
+	return false, nil
 }
 
 // CreateOrder создает заказ с его товарами и отправляет в очередь
@@ -42,14 +41,12 @@ func (a *Accrual) CreateOrder(ctx context.Context, order *models.Order) {
 	goods := make([]*storage.Goods, len(order.Goods))
 	workGoods := make([]*workerGoods, len(order.Goods))
 	for i, good := range order.Goods {
-		var price monetary.NullUnit
-
 		// Проверяем наличие в БД указанного в заказе match и получаем его ID
 		match, err := a.storage.GetMatchByName(ctx, good.Match)
 		if err != nil {
 			// Если ErrNotFound, то это штатное выполнение сценария
 			if errors.Is(err, models.ErrNotFound) {
-				slog.Info(err.Error())
+				slog.Info(fmt.Errorf("%w: %s", err, good.Match).Error())
 				a.storage.CreateInvalidOrder(ctx, order.Number)
 				return
 			}
@@ -57,13 +54,8 @@ func (a *Accrual) CreateOrder(ctx context.Context, order *models.Order) {
 			return
 		}
 
-		// Конвертим Price из запроса в значение для БД
-		err = price.Scan(good.Price)
-		if err != nil {
-			slog.Error(err.Error())
-		}
-		goods[i] = &storage.Goods{MatchID: match.MatchID, Price: float64(price.Unit)}
-		workGoods[i] = &workerGoods{matchID: match.MatchID, price: good.Price, reward: match.Reward, rewardType: match.Type}
+		goods[i] = &storage.Goods{MatchID: match.MatchID, Price: good.Price.Float64()}
+		workGoods[i] = &workerGoods{matchID: match.MatchID, price: good.Price.Float64(), reward: match.Reward, rewardType: match.Type}
 	}
 
 	orderID, err := a.storage.CreateOrderWithGoods(ctx, order.Number, goods)
@@ -77,14 +69,14 @@ func (a *Accrual) CreateOrder(ctx context.Context, order *models.Order) {
 
 // processing выполняет процесс по обработке заказа
 func (a *Accrual) processing(workOrder *workerOrder) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	doneCh := make(chan struct{})
 	workOrderCh := make(chan *workerOrder)
 
 	go func() {
 		defer close(workOrderCh)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
 
 		select {
 		case <-doneCh:
@@ -100,11 +92,17 @@ func (a *Accrual) processing(workOrder *workerOrder) {
 	calculatedOrderCh := a.calculateAccrual(workOrderCh)
 	for order := range calculatedOrderCh {
 		for _, good := range order.goods {
-			err := a.storage.UpdateGoodAccrual(ctx, good.matchID, float64(good.accrual))
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			err := a.storage.UpdateGoodAccrual(ctx, order.orderID, good.matchID, good.accrual)
 			if err != nil {
 				slog.Error(err.Error())
 			}
 		}
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
 		err := a.storage.UpdateOrder(ctx, &storage.Order{OrderID: order.orderID, Status: 3, Accrual: float64(order.accrual)})
 		if err != nil {
 			slog.Error(err.Error())
@@ -118,21 +116,23 @@ func (a *Accrual) calculateAccrual(tasks chan *workerOrder) chan *workerOrder {
 
 	out := make(chan *workerOrder)
 
-	wg.Add(len(tasks))
 	for task := range tasks {
-		for _, good := range task.goods {
-			switch good.rewardType {
-			case percent:
-				accrualResult := good.reward * int(good.price) / 100
-				good.accrual = monetary.Unit(accrualResult)
-			case natural:
-				good.accrual = monetary.Unit(good.reward)
+		wg.Add(1)
+		go func(task *workerOrder) {
+			defer wg.Done()
+			for _, good := range task.goods {
+				switch good.rewardType {
+				case percent:
+					accrualResult := good.reward * good.price / 100
+					good.accrual = accrualResult
+				case natural:
+					good.accrual = good.reward
+				}
+				task.accrual += good.accrual
 			}
-			task.accrual = +good.accrual
-		}
-		out <- task
+			out <- task
+		}(task)
 	}
-	wg.Done()
 
 	go func() {
 		wg.Wait()

@@ -49,12 +49,16 @@ func (h *handler) registerOrder(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	if h.service.Accrual.CheckOrder(ctx, o.Number) {
+	dublOrder, err := h.service.Accrual.CheckOrder(ctx, o.Number) 
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	if !dublOrder {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
 
-	h.service.Accrual.CreateOrder(context.Background(), &o)
+	go h.service.Accrual.CreateOrder(context.Background(), &o)
 	w.WriteHeader(http.StatusAccepted)
 }
 

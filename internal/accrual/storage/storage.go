@@ -14,15 +14,29 @@ type Storage interface {
 	Accrual
 }
 
+//go:generate mockgen -source=storage.go -destination=mocks/mock.go
 // Accrual методы для CRUD в БД
 type Accrual interface {
+	// CreateOrderWithGoods создание записи о заказе в таблице orders и связанную таблицу goods
 	CreateOrderWithGoods(ctx context.Context, order string, goods []*Goods) (uuid.UUID, error)
+
+	// CreateInvalidOrder создает запись о заказе без Goods со статусом Invalid. Для кейсов, когда не найдено соответствующего товара
 	CreateInvalidOrder(ctx context.Context, order string) error
+
+	// UpdateOrder обновляет статус и сумму вознаграждения по заказу
 	UpdateOrder(ctx context.Context, order *Order) error
-	UpdateGoodAccrual(ctx context.Context, matchID uuid.UUID, accrual float64) error
+
+	// UpdateGoodAccrual обновляет сумму вознаграждения за конкретный товар
+	UpdateGoodAccrual(ctx context.Context, orderID uuid.UUID, matchID uuid.UUID, accrual float64) error
+
+	// CreateMatch создает новую механику вознаграждения для товара
 	CreateMatch(ctx context.Context, match *Match) (uuid.UUID, error)
+
+	// GetMatchByName возвращает механику вознаграждения для товара
 	GetMatchByName(ctx context.Context, matchName string) (*MatchOut, error)
-	GetOrderWithGoodsByNumber(ctx context.Context, orderNumber string) (*OrderOut, error)
+
+	// GetOrderByNumber возвращает статус заказа и вознаграждение
+	GetOrderByNumber(ctx context.Context, orderNumber string) (*OrderOut, error)
 }
 
 // OrderStatus тип статуса заказа
@@ -99,6 +113,6 @@ func (r RewardType) String() string {
 type MatchOut struct {
 	MatchID   uuid.UUID
 	MatchName string
-	Reward    int
+	Reward    float64
 	Type      string
 }

@@ -15,5 +15,5 @@ type Goods struct {
 type OrderOut struct {
 	Number  string `json:"order"`
 	Status  string `json:"status"`
-	Accrual int    `json:"accrual"`
+	Accrual monetary.NullUnit    `json:"accrual"`
 }

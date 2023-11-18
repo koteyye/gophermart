@@ -4,9 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/sergeizaitcev/gophermart/deployments/accrual/migrations"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/config"
@@ -15,69 +12,63 @@ import (
 
 var _ storage.Storage = (*Storage)(nil)
 
+// Storage ...
 type Storage struct {
-	*Accrual
-
-	pool *pgxpool.Pool
+	db *sql.DB
 }
 
-func NewStorage(ctx context.Context, c *config.Config) (*Storage, error) {
-	err := migrationUp(ctx, c.DatabaseURI)
+// NewStorage ...
+func Connect(c *config.Config) (*Storage, error) {
+	db, err := connect(c.DatabaseURI)
 	if err != nil {
-		return nil, fmt.Errorf("migration: %w", err)
+		return nil, fmt.Errorf("connectiong to postgres: %w", err)
 	}
-
-	pool, err := newPool(ctx, c.DatabaseURI)
-	if err != nil {
-		return nil, fmt.Errorf("connect to the database: %w", err)
-	}
-
-	s := &Storage{
-		Accrual: NewAccrual(pool),
-		pool:    pool,
-	}
-
-	return s, nil
+	return &Storage{db: db}, nil
 }
 
-func (s *Storage) Close() error {
-	s.pool.Close()
-	return nil
-}
-
-func newPool(ctx context.Context, dsn string) (pool *pgxpool.Pool, err error) {
-	pool, err = pgxpool.New(ctx, dsn)
+func connect(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("create a new connection: %w", err)
 	}
-	defer func() {
-		if err != nil {
-			pool.Close()
-		}
-	}()
 
-	pingCtx, pingCancel := context.WithTimeout(ctx, 3*time.Second)
-	defer pingCancel()
-
-	err = pool.Ping(pingCtx)
-	if err != nil {
-		return nil, fmt.Errorf("database ping %w", err)
+	if err = db.Ping(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("database ping: %w", err)
 	}
 
-	return pool, nil
+	return db, nil
 }
 
-// migrationUp по dsn определяет *sql.DB и запускает миграцию
-func migrationUp(ctx context.Context, dsn string) error {
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return fmt.Errorf("create a new connection: %w", err)
-	}
-	defer db.Close()
+func (s *Storage) Close() error {
+	return s.db.Close()
+}
 
-	err = migrations.Up(ctx, db)
+func (s *Storage) Up(ctx context.Context) error {
+	return migrations.Up(ctx, s.db)
+}
+
+func (s *Storage) Down(ctx context.Context) error {
+	return migrations.Down(ctx, s.db)
+}
+
+func (s *Storage) transaction(
+	ctx context.Context,
+	fn func(*sql.Tx) error,
+) error {
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
-		return fmt.Errorf("migration up: %w", err)
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	err = fn(tx)
+	if err != nil {
+		return fmt.Errorf("transaction: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return nil
