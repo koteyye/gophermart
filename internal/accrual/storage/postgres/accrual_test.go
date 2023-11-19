@@ -93,4 +93,17 @@ func TestAccrualPostgres(t *testing.T) {
 	//Тест обновления goods
 	err = accrual.UpdateGoodAccrual(context.Background(), testOrderID, testMatchID1.MatchID, 100)
 	assert.NoError(t, err)
+
+	//Тест обновления goods списоком
+	for _, good := range goods {
+		good.Accrual =+ 100
+	}
+	err = accrual.BatchUpdateGoods(context.Background(), testOrderID, goods)
+	assert.NoError(t, err)
+
+	//Тест получения списка mathes по matchNames
+	matchNames := []string{testMatchName1, testMatchName2}
+	matches, err := accrual.GetMathesByNames(context.Background(), matchNames)
+	assert.NoError(t, err)
+	assert.NotNil(t, matches)
 }
