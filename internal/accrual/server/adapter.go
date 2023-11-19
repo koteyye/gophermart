@@ -57,13 +57,15 @@ func parseMatch(r io.Reader) (models.Match, error) {
 
 // mapErrorToResponse маппит ошибку на соответствующий код ответа
 func mapErrorToResponse(w http.ResponseWriter, err error) {
-	if errors.Is(err, models.ErrDuplicate) {
+	if errors.Is(err, models.ErrDuplicate) || errors.Is(err, models.ErrOrderRegistered) {
 		w.WriteHeader(http.StatusConflict)
 	}
 	if errors.Is(err, models.ErrNotFound) {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusNotFound)
 	}
 	if errors.Is(err, models.ErrOther) {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }

@@ -15,7 +15,7 @@ type Goods struct {
 type OrderOut struct {
 	Number  string `json:"order"`
 	Status  string `json:"status"`
-	Accrual monetary.NullUnit    `json:"accrual"`
+	Accrual monetary.Unit    `json:"accrual"`
 }
 
 type Match struct {

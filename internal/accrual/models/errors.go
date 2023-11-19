@@ -8,3 +8,8 @@ var (
 	ErrNotFound  = errors.New("value not found")
 	ErrOther     = errors.New("other storage error")
 )
+
+// Ошибки service
+var (
+	ErrOrderRegistered = errors.New("order registered")
+)

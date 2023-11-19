@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
 	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
@@ -35,13 +36,9 @@ func (a *Storage) BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods
 func (a *Storage) GetMathesByNames(ctx context.Context, matchNames []string) (map[string]*storage.MatchOut, error) {
 	matches := make(map[string]*storage.MatchOut, len(matchNames))
 
-	var str string
-	for _, value := range matchNames {
-		str += "'" +value + "'" + ","
-	}
-	query := "select id, match_name, reward, reward_type from matches where match_name in (" + str[:len(str)-1] +")"
+	query := "select id, match_name, reward, reward_type from matches where match_name = any ($1)"
 
-	rows, err := a.db.QueryContext(ctx, query)
+	rows, err := a.db.QueryContext(ctx, query, pq.Array(matchNames))
 	if err != nil {
 		return nil, fmt.Errorf("search mathes err: %w", errorHandle(err))
 	}

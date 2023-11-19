@@ -46,6 +46,17 @@ func (s *Service) withCancel() (context.Context, context.CancelFunc) {
 	return ctx, cancel
 }
 
+func (s *Service) GetOrder(ctx context.Context, orderNumber string) (*models.OrderOut, error) {
+	order, err := s.storage.GetOrderByNumber(ctx, orderNumber)
+	if err != nil {
+		slog.Error(fmt.Errorf("get orrder by number %s err: %w", orderNumber, err).Error())
+		return &models.OrderOut{}, err
+	}
+	return &models.OrderOut{
+		Number: order.OrderNumber, 
+		Status: order.Status, 
+		Accrual: order.Accrual}, nil
+}
 
 // CheckMatches проверяет наличие зарегистрированного match в БД
 func (s *Service) CheckMatch(ctx context.Context, mathcnName string) error {
@@ -72,9 +83,15 @@ func (s *Service) CreateMatch(match models.Match) error {
 
 // CheckOrder проверяет наличие заказа в БД
 func (s *Service) CheckOrder(ctx context.Context, orderNumber string) error {
-	_, err := s.storage.GetOrderByNumber(ctx, orderNumber)
+	order, err := s.storage.GetOrderByNumber(ctx, orderNumber)
 	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			return nil
+		}
 		return err
+	}
+	if order != nil {
+		return models.ErrOrderRegistered
 	}
 	return nil
 }
@@ -145,6 +162,7 @@ func (s *Service) processing(ctx context.Context, workOrder *workerOrder) {
 
 		//в бд обновляем общий accrual по заказу и обновляем статус на processed
 		s.updateOrderProcessed(ctx, order)
+		close(workOrderCh)
 	}
 }
 
@@ -176,7 +194,9 @@ func (s *Service) calculateOrder(ctx context.Context, workOrder *workerOrder) ch
 				good.accrual = calculateAccrual(good)
 				workOrder.accrual += good.accrual
 			}
+			workOrderCh <- workOrder
 	}()
+	
 
 	return workOrderCh
 }
@@ -185,7 +205,7 @@ func (s *Service) calculateOrder(ctx context.Context, workOrder *workerOrder) ch
 func calculateAccrual(good *workerGoods) monetary.Unit {
 	switch good.rewardType {
 	case percent:
-		return monetary.Format(good.reward * good.price.Float64())
+		return monetary.Format(good.reward / 100 * good.price.Float64())
 	case natural:
 		return monetary.Format(good.reward)
 	}

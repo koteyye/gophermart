@@ -52,13 +52,11 @@ func (h *handler) registerOrder(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.CheckOrder(ctx, o.Number) 
 	if err != nil {
-		if !errors.Is(err, models.ErrNotFound) {
-			mapErrorToResponse(w, err)
-			return
-		}
+		mapErrorToResponse(w, err)
+		return
 	}
 
-	h.service.CreateOrder(&o)
+	go h.service.CreateOrder(&o)
 	w.WriteHeader(http.StatusAccepted)
 }
 
@@ -89,8 +87,21 @@ func (h *handler) createMatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) getOrder(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusTeapot)
+	orderNumber := chi.URLParam(r, "number")
+	if orderNumber == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-	json.NewEncoder(w).Encode(map[string]string{"response": "I'm not implemented yet, but someday it will happen"})
+	ctx := r.Context()
+
+	order, err := h.service.GetOrder(ctx, orderNumber)
+	if err != nil {
+		mapErrorToResponse(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(order)
 }
