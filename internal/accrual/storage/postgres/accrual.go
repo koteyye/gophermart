@@ -6,8 +6,69 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
+	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
+
+// BatchUpdateGoods обновляет записи в таблице goods по комбинации orderID + mathcID
+func (a *Storage) BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods[]*storage.Goods) error {
+	query := "update goods set accrual = $1, updated_at = now() where match_id = $2 and order_id = $3"
+
+	err := a.transaction(ctx, func(tx *sql.Tx) error {
+		for _, good := range goods {
+			_, err := tx.ExecContext(ctx, query, good.Accrual, good.MatchID, orderID)
+			if err != nil {
+				return fmt.Errorf("update goods err: %w", errorHandle(err))
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("update goods err: %w", errorHandle(err))
+	}
+
+	return nil
+}
+
+
+func (a *Storage) GetMathesByNames(ctx context.Context, matchNames []string) (map[string]*storage.MatchOut, error) {
+	matches := make(map[string]*storage.MatchOut, len(matchNames))
+
+	query := "select id, match_name, reward, reward_type from matches where match_name = any ($1)"
+
+	rows, err := a.db.QueryContext(ctx, query, pq.Array(matchNames))
+	if err != nil {
+		return nil, fmt.Errorf("search mathes err: %w", errorHandle(err))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var matchID uuid.UUID
+		var matchName string
+		var reward monetary.Unit
+		var rewardType string
+
+		err := rows.Scan(
+			&matchID,
+			&matchName,
+			&reward,
+			&rewardType,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan matches err: %w", errorHandle(err))
+		}
+
+		matches[matchName] = &storage.MatchOut{
+			MatchID: matchID, 
+			MatchName: matchName, 
+			Reward: reward, Type: 
+			rewardType,}
+	}
+
+	return matches, nil
+}
 
 // CreateOrderWithGoods создание записи о заказе в таблице orders и связанную таблицу goods
 func (a *Storage) CreateOrderWithGoods(ctx context.Context, order string, goods []*storage.Goods) (uuid.UUID, error) {
@@ -59,7 +120,7 @@ func (a *Storage) UpdateOrder(ctx context.Context, order *storage.Order) error {
 }
 
 // UpdateGoodAccrual обновляет сумму вознаграждения за конкретный товар
-func (a *Storage) UpdateGoodAccrual(ctx context.Context, orderID uuid.UUID, matchID uuid.UUID, accrual float64) error {
+func (a *Storage) UpdateGoodAccrual(ctx context.Context, orderID uuid.UUID, matchID uuid.UUID, accrual int) error {
 	query1 := "update goods set accrual = $1, updated_at = now() where match_id = $2 and order_id = $3"
 
 	_, err := a.db.ExecContext(ctx, query1, accrual, matchID, orderID)

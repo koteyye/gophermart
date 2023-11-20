@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
 
 type Storage interface {
@@ -27,13 +28,19 @@ type Accrual interface {
 	UpdateOrder(ctx context.Context, order *Order) error
 
 	// UpdateGoodAccrual обновляет сумму вознаграждения за конкретный товар
-	UpdateGoodAccrual(ctx context.Context, orderID uuid.UUID, matchID uuid.UUID, accrual float64) error
+	UpdateGoodAccrual(ctx context.Context, orderID uuid.UUID, matchID uuid.UUID, accrual int) error
+
+	// BatchUpdateGoods обновляет записи в таблице goods по комбинации orderID + mathcID
+	BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods[]*Goods) error
 
 	// CreateMatch создает новую механику вознаграждения для товара
 	CreateMatch(ctx context.Context, match *Match) (uuid.UUID, error)
 
 	// GetMatchByName возвращает механику вознаграждения для товара
 	GetMatchByName(ctx context.Context, matchName string) (*MatchOut, error)
+
+	// GetMathesByNames возвращает список механик вознагрждений и их ID по списку имен
+	GetMathesByNames(ctx context.Context, matchNames[]string) (map[string]*MatchOut, error)
 
 	// GetOrderByNumber возвращает статус заказа и вознаграждение
 	GetOrderByNumber(ctx context.Context, orderNumber string) (*OrderOut, error)
@@ -67,28 +74,28 @@ func (o OrderStatus) String() string {
 type Goods struct {
 	GoodID  uuid.UUID `db:"id"`
 	MatchID uuid.UUID `db:"match_id"`
-	Price   float64   `db:"price"`
-	Accrual float64   `db:"accrual"`
+	Price   monetary.Unit   `db:"price"`
+	Accrual monetary.Unit   `db:"accrual"`
 }
 
 // Order структура для обновления записи в таблице orders
 type Order struct {
 	OrderID uuid.UUID
 	Status  OrderStatus
-	Accrual float64
+	Accrual monetary.Unit
 }
 
 // OrderOut структура для выгрузки записи из таблицы orders
 type OrderOut struct {
 	OrderNumber string
 	Status      string
-	Accrual     float64
+	Accrual     monetary.Unit
 }
 
 // Match структура для создания записи в таблице matches
 type Match struct {
 	MatchName string
-	Reward    int
+	Reward    monetary.Unit
 	Type      RewardType
 }
 
@@ -113,6 +120,6 @@ func (r RewardType) String() string {
 type MatchOut struct {
 	MatchID   uuid.UUID
 	MatchName string
-	Reward    float64
+	Reward    monetary.Unit
 	Type      string
 }

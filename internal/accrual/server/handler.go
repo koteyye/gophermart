@@ -1,11 +1,12 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/service"
 )
 
@@ -49,29 +50,58 @@ func (h *handler) registerOrder(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	dublOrder, err := h.service.Accrual.CheckOrder(ctx, o.Number) 
+	err = h.service.CheckOrder(ctx, o.Number) 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-	if !dublOrder {
-		w.WriteHeader(http.StatusConflict)
+		mapErrorToResponse(w, err)
 		return
 	}
 
-	go h.service.Accrual.CreateOrder(context.Background(), &o)
+	go h.service.CreateOrder(&o)
 	w.WriteHeader(http.StatusAccepted)
 }
 
 func (h *handler) createMatch(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusTeapot)
+	m, err := parseMatch(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-	json.NewEncoder(w).Encode(map[string]string{"response": "I'm not implemented yet, but someday it will happen"})
+	ctx := r.Context()
+
+	err = h.service.CheckMatch(ctx, m.MatchName)
+	if err != nil {
+		if !errors.Is(err, models.ErrNotFound) {
+			mapErrorToResponse(w, err)
+			return
+		}
+	}
+
+	err = h.service.CreateMatch(m)
+	if err != nil {
+		mapErrorToResponse(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *handler) getOrder(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusTeapot)
+	orderNumber := chi.URLParam(r, "number")
+	if orderNumber == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-	json.NewEncoder(w).Encode(map[string]string{"response": "I'm not implemented yet, but someday it will happen"})
+	ctx := r.Context()
+
+	order, err := h.service.GetOrder(ctx, orderNumber)
+	if err != nil {
+		mapErrorToResponse(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(order)
 }

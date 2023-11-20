@@ -10,7 +10,7 @@ create table orders (
     id uuid not null default gen_random_uuid() unique,
     order_number varchar not null,
     status order_status default 'registered',
-    accrual float not null default 0,
+    accrual int not null default 0,
     created_at timestamp not null default now(),
     updated_at timestamp not null default now(),
     deleted_at timestamp
@@ -23,7 +23,7 @@ comment on column orders.accrual is 'сумма вознаграждения п�
 create table matches (
     id uuid not null default gen_random_uuid() unique,
     match_name text not null unique,
-    reward float not null,
+    reward int not null,
     reward_type rewards not null,
     created_at timestamp not null default now(),
     updated_at timestamp not null default now(),
@@ -38,8 +38,8 @@ create table goods (
     id uuid not null default gen_random_uuid(),
     order_id uuid not null,
     match_id uuid not null,
-    price float not null,
-    accrual float default 0,
+    price int not null,
+    accrual int default 0,
     created_at timestamp not null default now(),
     updated_at timestamp not null default now(),
     deleted_at timestamp,

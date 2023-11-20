@@ -15,5 +15,23 @@ type Goods struct {
 type OrderOut struct {
 	Number  string `json:"order"`
 	Status  string `json:"status"`
-	Accrual monetary.NullUnit    `json:"accrual"`
+	Accrual monetary.Unit    `json:"accrual"`
+}
+
+type Match struct {
+	MatchName string `json:"match"`
+	Reward monetary.Unit `json:"reward"`
+	RewardType RewardType `json:"reward_type"`
+}
+
+type RewardType string
+
+func (r RewardType) Uint() uint8 {
+	switch r {
+	case "%":
+		return 0
+	case "pt":
+		return 1
+	}
+	return 2
 }
