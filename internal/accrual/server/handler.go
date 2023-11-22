@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/service"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
 )
 
 // handler определяет HTTP-обработчик для accrual
@@ -50,7 +50,7 @@ func (h *handler) registerOrder(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	err = h.service.CheckOrder(ctx, o.Number) 
+	err = h.service.CheckOrder(ctx, o.Number)
 	if err != nil {
 		mapErrorToResponse(w, err)
 		return
@@ -71,7 +71,7 @@ func (h *handler) createMatch(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.CheckMatch(ctx, m.MatchName)
 	if err != nil {
-		if !errors.Is(err, models.ErrNotFound) {
+		if !errors.Is(err, storage.ErrNotFound) {
 			mapErrorToResponse(w, err)
 			return
 		}

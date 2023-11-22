@@ -1,8 +1,15 @@
 package service
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 	"github.com/sergeizaitcev/gophermart/pkg/monetary"
+)
+
+// ошибки service
+var (
+	ErrOrderRegistered = errors.New("order registered")
 )
 
 // workerOrder структура заказа для обработчика

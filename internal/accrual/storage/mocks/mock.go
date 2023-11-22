@@ -36,6 +36,20 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 	return m.recorder
 }
 
+// BatchUpdateGoods mocks base method.
+func (m *MockStorage) BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods []*storage.Goods) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchUpdateGoods", ctx, orderID, goods)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchUpdateGoods indicates an expected call of BatchUpdateGoods.
+func (mr *MockStorageMockRecorder) BatchUpdateGoods(ctx, orderID, goods interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchUpdateGoods", reflect.TypeOf((*MockStorage)(nil).BatchUpdateGoods), ctx, orderID, goods)
+}
+
 // Close mocks base method.
 func (m *MockStorage) Close() error {
 	m.ctrl.T.Helper()
@@ -109,6 +123,21 @@ func (mr *MockStorageMockRecorder) GetMatchByName(ctx, matchName interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMatchByName", reflect.TypeOf((*MockStorage)(nil).GetMatchByName), ctx, matchName)
 }
 
+// GetMatchesByNames mocks base method.
+func (m *MockStorage) GetMatchesByNames(ctx context.Context, matchNames []string) (map[string]*storage.MatchOut, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMatchesByNames", ctx, matchNames)
+	ret0, _ := ret[0].(map[string]*storage.MatchOut)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMatchesByNames indicates an expected call of GetMatchesByNames.
+func (mr *MockStorageMockRecorder) GetMatchesByNames(ctx, matchNames interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMatchesByNames", reflect.TypeOf((*MockStorage)(nil).GetMatchesByNames), ctx, matchNames)
+}
+
 // GetOrderByNumber mocks base method.
 func (m *MockStorage) GetOrderByNumber(ctx context.Context, orderNumber string) (*storage.OrderOut, error) {
 	m.ctrl.T.Helper()
@@ -125,7 +154,7 @@ func (mr *MockStorageMockRecorder) GetOrderByNumber(ctx, orderNumber interface{}
 }
 
 // UpdateGoodAccrual mocks base method.
-func (m *MockStorage) UpdateGoodAccrual(ctx context.Context, orderID, matchID uuid.UUID, accrual float64) error {
+func (m *MockStorage) UpdateGoodAccrual(ctx context.Context, orderID, matchID uuid.UUID, accrual int) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateGoodAccrual", ctx, orderID, matchID, accrual)
 	ret0, _ := ret[0].(error)
@@ -173,6 +202,20 @@ func NewMockAccrual(ctrl *gomock.Controller) *MockAccrual {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockAccrual) EXPECT() *MockAccrualMockRecorder {
 	return m.recorder
+}
+
+// BatchUpdateGoods mocks base method.
+func (m *MockAccrual) BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods []*storage.Goods) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchUpdateGoods", ctx, orderID, goods)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchUpdateGoods indicates an expected call of BatchUpdateGoods.
+func (mr *MockAccrualMockRecorder) BatchUpdateGoods(ctx, orderID, goods interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchUpdateGoods", reflect.TypeOf((*MockAccrual)(nil).BatchUpdateGoods), ctx, orderID, goods)
 }
 
 // CreateInvalidOrder mocks base method.
@@ -234,6 +277,21 @@ func (mr *MockAccrualMockRecorder) GetMatchByName(ctx, matchName interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMatchByName", reflect.TypeOf((*MockAccrual)(nil).GetMatchByName), ctx, matchName)
 }
 
+// GetMatchesByNames mocks base method.
+func (m *MockAccrual) GetMatchesByNames(ctx context.Context, matchNames []string) (map[string]*storage.MatchOut, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMatchesByNames", ctx, matchNames)
+	ret0, _ := ret[0].(map[string]*storage.MatchOut)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMatchesByNames indicates an expected call of GetMatchesByNames.
+func (mr *MockAccrualMockRecorder) GetMatchesByNames(ctx, matchNames interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMatchesByNames", reflect.TypeOf((*MockAccrual)(nil).GetMatchesByNames), ctx, matchNames)
+}
+
 // GetOrderByNumber mocks base method.
 func (m *MockAccrual) GetOrderByNumber(ctx context.Context, orderNumber string) (*storage.OrderOut, error) {
 	m.ctrl.T.Helper()
@@ -250,7 +308,7 @@ func (mr *MockAccrualMockRecorder) GetOrderByNumber(ctx, orderNumber interface{}
 }
 
 // UpdateGoodAccrual mocks base method.
-func (m *MockAccrual) UpdateGoodAccrual(ctx context.Context, orderID, matchID uuid.UUID, accrual float64) error {
+func (m *MockAccrual) UpdateGoodAccrual(ctx context.Context, orderID, matchID uuid.UUID, accrual int) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateGoodAccrual", ctx, orderID, matchID, accrual)
 	ret0, _ := ret[0].(error)

@@ -12,7 +12,7 @@ import (
 )
 
 // BatchUpdateGoods обновляет записи в таблице goods по комбинации orderID + mathcID
-func (a *Storage) BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods[]*storage.Goods) error {
+func (a *Storage) BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods []*storage.Goods) error {
 	query := "update goods set accrual = $1, updated_at = now() where match_id = $2 and order_id = $3"
 
 	err := a.transaction(ctx, func(tx *sql.Tx) error {
@@ -32,8 +32,7 @@ func (a *Storage) BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods
 	return nil
 }
 
-
-func (a *Storage) GetMathesByNames(ctx context.Context, matchNames []string) (map[string]*storage.MatchOut, error) {
+func (a *Storage) GetMatchesByNames(ctx context.Context, matchNames []string) (map[string]*storage.MatchOut, error) {
 	matches := make(map[string]*storage.MatchOut, len(matchNames))
 
 	query := "select id, match_name, reward, reward_type from matches where match_name = any ($1)"
@@ -61,10 +60,9 @@ func (a *Storage) GetMathesByNames(ctx context.Context, matchNames []string) (ma
 		}
 
 		matches[matchName] = &storage.MatchOut{
-			MatchID: matchID, 
-			MatchName: matchName, 
-			Reward: reward, Type: 
-			rewardType,}
+			MatchID:   matchID,
+			MatchName: matchName,
+			Reward:    reward, Type: rewardType}
 	}
 
 	return matches, nil

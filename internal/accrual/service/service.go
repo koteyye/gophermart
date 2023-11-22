@@ -16,14 +16,14 @@ import (
 // Service определяет бизнес-логику accrual
 type Service struct {
 	storage storage.Storage
-	termCh chan struct{}
-	wg sync.WaitGroup
+	termCh  chan struct{}
+	wg      *sync.WaitGroup
 }
 
 // NewService возвращает экземпляр Service
 func NewService(s storage.Storage) *Service {
 	return &Service{
-		termCh: make(chan struct{}),
+		termCh:  make(chan struct{}),
 		storage: s,
 	}
 }
@@ -37,8 +37,8 @@ func (s *Service) withCancel() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		select {
-		case <- ctx.Done():
-		case <- s.termCh:
+		case <-ctx.Done():
+		case <-s.termCh:
 			cancel()
 		}
 	}()
@@ -53,8 +53,8 @@ func (s *Service) GetOrder(ctx context.Context, orderNumber string) (*models.Ord
 		return &models.OrderOut{}, err
 	}
 	return &models.OrderOut{
-		Number: order.OrderNumber, 
-		Status: order.Status, 
+		Number:  order.OrderNumber,
+		Status:  order.Status,
 		Accrual: order.Accrual}, nil
 }
 
@@ -85,13 +85,13 @@ func (s *Service) CreateMatch(match models.Match) error {
 func (s *Service) CheckOrder(ctx context.Context, orderNumber string) error {
 	order, err := s.storage.GetOrderByNumber(ctx, orderNumber)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, storage.ErrNotFound) {
 			return nil
 		}
 		return err
 	}
 	if order != nil {
-		return models.ErrOrderRegistered
+		return ErrOrderRegistered
 	}
 	return nil
 }
@@ -109,10 +109,10 @@ func (s *Service) CreateOrder(order *models.Order) {
 		matchNames[i] = good.Match
 	}
 	// Проверяем наличие в БД указанного в заказе match и получаем его ID
-	matches, err := s.storage.GetMathesByNames(ctx, matchNames)
+	matches, err := s.storage.GetMatchesByNames(ctx, matchNames)
 	if err != nil {
 		// Если ErrNotFound, то это штатное выполнение сценария
-		if errors.Is(err, models.ErrNotFound) {
+		if errors.Is(err, storage.ErrNotFound) {
 			slog.Info(err.Error())
 			err := s.storage.CreateInvalidOrder(ctx, order.Number)
 			if err != nil {
@@ -125,9 +125,9 @@ func (s *Service) CreateOrder(order *models.Order) {
 	for i, good := range order.Goods {
 		goods[i] = &storage.Goods{MatchID: matches[good.Match].MatchID, Price: good.Price}
 		workGoods[i] = &workerGoods{
-			matchID: matches[good.Match].MatchID, 
-			price: good.Price, 
-			reward: matches[good.Match].Reward.Float64(), 
+			matchID:    matches[good.Match].MatchID,
+			price:      good.Price,
+			reward:     matches[good.Match].Reward.Float64(),
 			rewardType: matches[good.Match].Type}
 	}
 
@@ -166,7 +166,7 @@ func (s *Service) processing(ctx context.Context, workOrder *workerOrder) {
 	}
 }
 
-//updateOrderProcessing обновляет статус заказа на "processing"
+// updateOrderProcessing обновляет статус заказа на "processing"
 func (s *Service) updateOrderProcessing(ctx context.Context, orderID uuid.UUID) {
 	err := s.storage.UpdateOrder(ctx, &storage.Order{OrderID: orderID, Status: 2, Accrual: 0})
 	if err != nil {
@@ -177,7 +177,7 @@ func (s *Service) updateOrderProcessing(ctx context.Context, orderID uuid.UUID) 
 func (s *Service) updateOrderProcessed(ctx context.Context, order *workerOrder) {
 	err := s.storage.UpdateOrder(ctx, &storage.Order{
 		OrderID: order.orderID,
-		Status: 3,
+		Status:  3,
 		Accrual: order.accrual,
 	})
 	if err != nil {
@@ -185,18 +185,17 @@ func (s *Service) updateOrderProcessed(ctx context.Context, order *workerOrder) 
 	}
 }
 
-//calculateOrder выполняет расчет каждого goods в заказе
+// calculateOrder выполняет расчет каждого goods в заказе
 func (s *Service) calculateOrder(ctx context.Context, workOrder *workerOrder) chan *workerOrder {
 	workOrderCh := make(chan *workerOrder)
-	
+
 	go func() {
-			for _, good := range workOrder.goods {
-				good.accrual = calculateAccrual(good)
-				workOrder.accrual += good.accrual
-			}
-			workOrderCh <- workOrder
+		for _, good := range workOrder.goods {
+			good.accrual = calculateAccrual(good)
+			workOrder.accrual += good.accrual
+		}
+		workOrderCh <- workOrder
 	}()
-	
 
 	return workOrderCh
 }
@@ -209,6 +208,6 @@ func calculateAccrual(good *workerGoods) monetary.Unit {
 	case natural:
 		return monetary.Format(good.reward)
 	}
-	
+
 	return 0
 }

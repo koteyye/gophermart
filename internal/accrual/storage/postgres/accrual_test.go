@@ -8,7 +8,6 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/config"
-	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,15 +19,15 @@ var (
 	testMatchName2   = "testItem2"
 )
 
-const test_dsn = "postgresql://postgres:postgres@localhost:5432/accrual?sslmode=disable"
+const testDsn = "postgresql://postgres:postgres@localhost:5432/accrual?sslmode=disable"
 
 // testDB тест postgres
 func testDB(t *testing.T) (*Storage, func()) {
 	ctx := context.Background()
 
-	storage, err := Connect(&config.Config{DatabaseURI: test_dsn})
+	storage, err := Connect(&config.Config{DatabaseURI: testDsn})
 	assert.NoError(t, err)
-	t.Cleanup(func() {storage.Close()})
+	t.Cleanup(func() { storage.Close() })
 
 	assert.NoError(t, storage.db.Ping())
 
@@ -50,7 +49,7 @@ func TestAccrualPostgres(t *testing.T) {
 	//Тест на дубль match
 	matchIDNil, err := accrual.CreateMatch(context.Background(), &storage.Match{MatchName: testMatchName1, Reward: 10, Type: 0})
 	assert.Equal(t, uuid.Nil, matchIDNil)
-	assert.ErrorIs(t, err, models.ErrDuplicate)
+	assert.ErrorIs(t, err, storage.ErrDuplicate)
 
 	//Тест получения matchID по имени
 	testMatchID1, err := accrual.GetMatchByName(context.Background(), testMatchName1)
@@ -60,7 +59,7 @@ func TestAccrualPostgres(t *testing.T) {
 
 	//Тест отсутствия matchID
 	_, err = accrual.GetMatchByName(context.Background(), "testMatchNothing")
-	assert.ErrorIs(t, err, models.ErrNotFound)
+	assert.ErrorIs(t, err, storage.ErrNotFound)
 
 	//Тест создания order
 	testGoods := make([]*storage.Goods, 2)
@@ -96,14 +95,14 @@ func TestAccrualPostgres(t *testing.T) {
 
 	//Тест обновления goods списоком
 	for _, good := range goods {
-		good.Accrual =+ 100
+		good.Accrual = +100
 	}
 	err = accrual.BatchUpdateGoods(context.Background(), testOrderID, goods)
 	assert.NoError(t, err)
 
 	//Тест получения списка mathes по matchNames
 	matchNames := []string{testMatchName1, testMatchName2}
-	matches, err := accrual.GetMathesByNames(context.Background(), matchNames)
+	matches, err := accrual.GetMatchesByNames(context.Background(), matchNames)
 	assert.NoError(t, err)
 	assert.NotNil(t, matches)
 }

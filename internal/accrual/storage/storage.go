@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	"github.com/google/uuid"
@@ -15,8 +16,9 @@ type Storage interface {
 	Accrual
 }
 
-//go:generate mockgen -source=storage.go -destination=mocks/mock.go
 // Accrual методы для CRUD в БД
+//
+//go:generate mockgen -source=storage.go -destination=mocks/mock.go
 type Accrual interface {
 	// CreateOrderWithGoods создание записи о заказе в таблице orders и связанную таблицу goods
 	CreateOrderWithGoods(ctx context.Context, order string, goods []*Goods) (uuid.UUID, error)
@@ -31,7 +33,7 @@ type Accrual interface {
 	UpdateGoodAccrual(ctx context.Context, orderID uuid.UUID, matchID uuid.UUID, accrual int) error
 
 	// BatchUpdateGoods обновляет записи в таблице goods по комбинации orderID + mathcID
-	BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods[]*Goods) error
+	BatchUpdateGoods(ctx context.Context, orderID uuid.UUID, goods []*Goods) error
 
 	// CreateMatch создает новую механику вознаграждения для товара
 	CreateMatch(ctx context.Context, match *Match) (uuid.UUID, error)
@@ -39,12 +41,19 @@ type Accrual interface {
 	// GetMatchByName возвращает механику вознаграждения для товара
 	GetMatchByName(ctx context.Context, matchName string) (*MatchOut, error)
 
-	// GetMathesByNames возвращает список механик вознагрждений и их ID по списку имен
-	GetMathesByNames(ctx context.Context, matchNames[]string) (map[string]*MatchOut, error)
+	// GetMatchesByNames возвращает список механик вознагрждений и их ID по списку имен
+	GetMatchesByNames(ctx context.Context, matchNames []string) (map[string]*MatchOut, error)
 
 	// GetOrderByNumber возвращает статус заказа и вознаграждение
 	GetOrderByNumber(ctx context.Context, orderNumber string) (*OrderOut, error)
 }
+
+// ошибки storage
+var (
+	ErrDuplicate = errors.New("duplicate value")
+	ErrNotFound  = errors.New("value not found")
+	ErrOther     = errors.New("other storage error")
+)
 
 // OrderStatus тип статуса заказа
 type OrderStatus uint8
@@ -72,10 +81,10 @@ func (o OrderStatus) String() string {
 
 // Goods структура для создания записи в таблице goods
 type Goods struct {
-	GoodID  uuid.UUID `db:"id"`
-	MatchID uuid.UUID `db:"match_id"`
-	Price   monetary.Unit   `db:"price"`
-	Accrual monetary.Unit   `db:"accrual"`
+	GoodID  uuid.UUID     `db:"id"`
+	MatchID uuid.UUID     `db:"match_id"`
+	Price   monetary.Unit `db:"price"`
+	Accrual monetary.Unit `db:"accrual"`
 }
 
 // Order структура для обновления записи в таблице orders
