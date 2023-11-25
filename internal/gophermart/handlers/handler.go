@@ -1,4 +1,4 @@
-package server
+package handlers
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/handlers/internal/user"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/models"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
 )
@@ -45,7 +46,7 @@ func (h *handler) init() {
 		})
 
 		r.Group(func(r chi.Router) {
-			r.Use(Auth(h.service.Auth))
+			r.Use(h.auth)
 			r.Get("/hello", h.hello)
 		})
 	})
@@ -108,7 +109,7 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 func (h *handler) hello(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	id, ok := ctx.Value(models.KeyUserID).(string)
+	id, ok := user.FromContext(ctx)
 	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
 		return

@@ -2,7 +2,6 @@ package accrual
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -92,27 +91,25 @@ func NewClient(addr string, opts *ClientOption) *Client {
 
 // OrderInfo возвращает информацию о расчёте начислений баллов лояльности за
 // совершённый заказ.
-func (c *Client) OrderInfo(ctx context.Context, order string) (OrderInfo, error) {
+func (c *Client) OrderInfo(ctx context.Context, order string) (*OrderInfo, error) {
 	u := c.preparseURL(path.Join("api", "orders", order))
 
 	res, err := c.get(ctx, u.String())
 	if err != nil {
-		return OrderInfo{}, fmt.Errorf("executing a get request: %w", err)
+		return nil, fmt.Errorf("executing a get request: %w", err)
 	}
 	defer gracefulClose(res)
 
 	if res.StatusCode != http.StatusOK {
-		return OrderInfo{}, prepareError(res)
+		return nil, prepareError(res)
 	}
 
-	var info OrderInfo
-
-	err = json.NewDecoder(res.Body).Decode(&info)
+	info, err := decodeOrderInfo(res.Body)
 	if err != nil {
-		return OrderInfo{}, fmt.Errorf("decoding a response: %w", err)
+		return nil, fmt.Errorf("decoding an order info: %w", err)
 	}
 
-	return info, nil
+	return &info, nil
 }
 
 func (c *Client) preparseURL(path string) url.URL {
@@ -143,30 +140,37 @@ func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
 }
 
 func (c *Client) sendRequest(req *http.Request) (*http.Response, error) {
-	ctx := req.Context()
-	n := c.opts.Retry
+	var res *http.Response
+	var err error
 
-	for n > 0 {
-		res, err := c.client.Do(req)
+	err = c.retry(req.Context(), func() error {
+		res, err = c.client.Do(req)
+		return err
+	})
+
+	return res, err
+}
+
+func (c *Client) retry(ctx context.Context, f func() error) error {
+	for i := 0; i < c.opts.Retry-1; i++ {
+		err := f()
 		if err == nil {
-			return res, nil
+			return nil
 		}
 
 		ne, ok := err.(net.Error)
 		if errors.Is(err, io.EOF) || (ok && ne.Timeout()) {
 			select {
 			case <-ctx.Done():
-				return nil, ctx.Err()
+				return ctx.Err()
 			case <-time.After(c.opts.Backoff):
-				n--
 				continue
 			}
 		}
 
-		return nil, fmt.Errorf("failed to execute the request: %w", err)
+		return err
 	}
-
-	return nil, errors.New("exceeded the number of attempts to send a request")
+	return f()
 }
 
 func gracefulClose(res *http.Response) {

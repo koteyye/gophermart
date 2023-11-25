@@ -1,66 +1,65 @@
 -- +goose Up
 -- +goose StatementBegin
-create type order_status as enum ('new', 'processed', 'processing', 'invalid');
+CREATE TYPE order_status AS ENUM ('new', 'processed', 'processing', 'invalid');
 
-create type balance_operations_state as enum ('run', 'done', 'error');
+CREATE TYPE operation_status AS ENUM ('run', 'done', 'error');
 
-create table if not exists users (
-	id uuid default gen_random_uuid() not null primary key,
-	user_name varchar(128) not null unique,
-	hashed_password varchar(128) not null,
-	created_at timestamp default now(),
-	updated_at timestamp default now(),
+CREATE TABLE IF NOT EXISTS users (
+	id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+	login varchar(128) NOT NULL UNIQUE,
+	hashed_password varchar(128) NOT NULL,
+	created_at timestamp DEFAULT now(),
+	updated_at timestamp DEFAULT now(),
 	deleted_at timestamp
 );
 
-create table if not exists orders (
-	id uuid default gen_random_uuid() not null primary key,
-	order_number varchar not null unique,
-	status order_status default 'new',
-	accrual int not null default 0,
-	created_at timestamp default now(),
-	updated_at timestamp default now(),
+CREATE TABLE IF NOT EXISTS balance (
+	id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+	user_id uuid NOT NULL,
+	amount int NOT NULL DEFAULT 0,
+	withdrawn int NOT NULL DEFAULT 0,
+	created_at timestamp DEFAULT now(),
+	updated_at timestamp DEFAULT now(),
 	deleted_at timestamp,
+	FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+	number varchar NOT NULL PRIMARY KEY,
+	status order_status DEFAULT 'new',
+	accrual int NOT NULL DEFAULT 0,
 	user_created uuid,
-	foreign key (user_created) references users(id)
-);
-
-create table if not exists balance (
-	id uuid default gen_random_uuid() not null primary key,
-	user_id uuid not null,
-	current_balance int not null default 0,
-	withdrawn int not null default 0,
-	created_at timestamp default now(),
-	updated_at timestamp default now(),
+	created_at timestamp DEFAULT now(),
+	updated_at timestamp DEFAULT now(),
 	deleted_at timestamp,
-	foreign key (user_id) references users(id)
+	FOREIGN KEY (user_created) REFERENCES users(id)
 );
 
-create table if not exists balance_operations (
-	id uuid default gen_random_uuid() not null primary key,
-	order_id uuid,
+CREATE TABLE IF NOT EXISTS operations (
+	id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+	order_number varchar,
+	amount int,
+	status operation_status DEFAULT 'run',
 	balance_id uuid,
-	sum_operation int,
-	operation_state balance_operations_state default 'run',
-	created_at timestamp default now(),
-	updated_at timestamp default now(),
+	created_at timestamp DEFAULT now(),
+	updated_at timestamp DEFAULT now(),
 	deleted_at timestamp,
-	foreign key (order_id) references orders(id),
-	foreign key (balance_id) references balance(id)
+	FOREIGN KEY (balance_id) REFERENCES balance(id),
+	FOREIGN KEY (order_number) REFERENCES orders(number)
 );
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists balance_operations;
+DROP TABLE IF EXISTS operations;
 
-drop table if exists balance;
+DROP TABLE IF EXISTS orders;
 
-drop table if exists orders;
+DROP TABLE IF EXISTS balance;
 
-drop table if exists users;
+DROP TABLE IF EXISTS users;
 
-drop type order_status;
+DROP TYPE operation_status;
 
-drop type balance_operations_state;
+DROP TYPE order_status;
 -- +goose StatementEnd

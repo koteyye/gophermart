@@ -80,10 +80,11 @@ func cleanArgs(args []string) []string {
 
 // parseEnv парсит переменные окружения.
 func (cmd *Command[T]) parseEnv() error {
-	if !isPtr(cmd.config) {
-		return env.Parse(&cmd.config)
+	rt := reflect.TypeOf(cmd.config)
+	if rt.Kind() == reflect.Pointer {
+		return env.Parse(cmd.config)
 	}
-	return env.Parse(cmd.config)
+	return env.Parse(&cmd.config)
 }
 
 // Execute запускает команду и блокируется до её завершения.
@@ -114,14 +115,9 @@ func (cmd *Command[T]) Execute(ctx context.Context) error {
 
 func newConfig[T Config]() T {
 	var zero T
-	rt := reflect.TypeOf(zero)
-	if rt.Kind() == reflect.Pointer {
-		zero = reflect.New(rt.Elem()).Interface().(T)
+	rv := reflect.ValueOf(&zero).Elem()
+	if rv.Kind() == reflect.Pointer {
+		rv.Set(reflect.New(rv.Type().Elem()))
 	}
 	return zero
-}
-
-func isPtr[T Config](c T) bool {
-	rt := reflect.TypeOf(c)
-	return rt.Kind() == reflect.Pointer
 }

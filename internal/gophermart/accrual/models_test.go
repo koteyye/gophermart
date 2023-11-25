@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/service/accrual"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/accrual"
 )
 
 func TestOrderInfo_MarshalJSON(t *testing.T) {

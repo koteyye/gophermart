@@ -3,6 +3,7 @@ package accrual
 import (
 	"encoding/json"
 	"errors"
+	"io"
 
 	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
@@ -13,6 +14,15 @@ type OrderInfo struct {
 	Order   string        `json:"order"`
 	Status  OrderStatus   `json:"status"`
 	Accrual monetary.Unit `json:"accrual"`
+}
+
+func decodeOrderInfo(r io.Reader) (OrderInfo, error) {
+	var info OrderInfo
+	err := json.NewDecoder(r).Decode(&info)
+	if err != nil {
+		return OrderInfo{}, err
+	}
+	return info, nil
 }
 
 // IsEmpty возвращает true, если информация о расчёте начисления пуста.
@@ -46,7 +56,7 @@ var statusValues = []string{
 }
 
 func (s OrderStatus) String() string {
-	if s >= 0 && int(s) < len(statusValues) {
+	if s > 0 && int(s) < len(statusValues) {
 		return statusValues[s]
 	}
 	return statusValues[0]

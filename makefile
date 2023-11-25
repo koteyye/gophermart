@@ -8,6 +8,10 @@ DATABASE_GOPHERMART := postgres://postgres:postgres@localhost:5433/gophermart?ss
 .PHONY: all
 all: test lint autotest
 
+.PHONY: generate
+generate:
+	@go generate ./...
+
 .PHONY: up
 up:
 	@docker-compose -f ./scripts/docker-compose.yaml up -d
