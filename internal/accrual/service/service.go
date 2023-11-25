@@ -59,8 +59,8 @@ func (s *Service) GetOrder(ctx context.Context, orderNumber string) (*models.Ord
 }
 
 // CheckMatches проверяет наличие зарегистрированного match в БД
-func (s *Service) CheckMatch(ctx context.Context, mathcnName string) error {
-	_, err := s.storage.GetMatchByName(ctx, mathcnName)
+func (s *Service) CheckMatch(ctx context.Context, matchName string) error {
+	_, err := s.storage.GetMatchByName(ctx, matchName)
 	if err != nil {
 		return err
 	}

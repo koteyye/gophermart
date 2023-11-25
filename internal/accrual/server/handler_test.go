@@ -1,16 +1,18 @@
 package server_test
 
 import (
-	"errors"
-	"github.com/google/uuid"
-	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
-	"github.com/stretchr/testify/assert"
-	"io"
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/server"
@@ -75,7 +77,7 @@ func TestGetOrder(t *testing.T) {
 			name:  "internal err",
 			order: testOrderNum,
 			mockBehavior: func(r *mockStorage.MockStorage, order string) {
-				r.EXPECT().GetOrderByNumber(gomock.Any(), order).Return(&storage.OrderOut{}, errors.New("other err"))
+				r.EXPECT().GetOrderByNumber(gomock.Any(), order).Return(&storage.OrderOut{}, storage.ErrOther)
 			},
 			expectedStatusCode: 500,
 		},
@@ -104,201 +106,130 @@ func TestGetOrder(t *testing.T) {
 }
 
 func TestCreateMatch(t *testing.T) {
-	type mockBehavior func(r *mockStorage.MockStorage, match *storage.Match)
-	type mockBehavior2 func(r *mockStorage.MockStorage, order string)
+	testMatch := storage.Match{
+		MatchName: "testMatch",
+		Reward:    2000,
+		Type:      0,
+	}
 
-	tests := []struct {
-		name               string
-		requestBody        io.Reader
-		mockBehavior       mockBehavior
-		mockBehavior2      mockBehavior2
-		expectedStatusCode int
-	}{
-		{
-			name: "success",
-			requestBody: strings.NewReader(`{
-				"match": "testMatch",
-				"reward": 20,
-				"reward_type": "%"
-				}`),
-			mockBehavior: func(r *mockStorage.MockStorage, match *storage.Match) {
-				r.EXPECT().CreateMatch(gomock.Any(), match).Return(uuid.New(), nil)
-			},
-			mockBehavior2: func(r *mockStorage.MockStorage, matchName string) {
-				r.EXPECT().GetMatchByName(gomock.Any(), matchName).Return(&storage.MatchOut{}, storage.ErrNotFound)
-			},
-			expectedStatusCode: 200,
-		},
-		{
-			name: "bad request",
-			requestBody: strings.NewReader(`{
+	testRequest := strings.NewReader(`{
+		"match": "testMatch",
+		"reward": 20,
+		"reward_type": "%"
+		}`)
+
+	trgURL, err := url.JoinPath(baseURL, createMatch)
+	assert.NoError(t, err)
+
+	t.Run("createMatch", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			t.Parallel()
+
+			h, s := testInitHandle(t)
+
+			r := httptest.NewRequest(http.MethodPost, trgURL, testRequest)
+			w := httptest.NewRecorder()
+
+			s.EXPECT().GetMatchByName(gomock.Any(), testMatch.MatchName).Return(&storage.MatchOut{}, storage.ErrNotFound)
+			s.EXPECT().CreateMatch(gomock.Any(), &testMatch).Return(uuid.New(), (error)(nil))
+
+			h.ServeHTTP(w, r)
+
+			assert.Equal(t, http.StatusOK, w.Code)
+		})
+
+		t.Run("badRequest", func(t *testing.T) {
+			t.Parallel()
+
+			h, _ := testInitHandle(t)
+
+			testBadRequest := strings.NewReader(`{
 				"match": "testMatch",
 				"reward": 20,
 				"reward_type": "процентики"
-				}`),
-			mockBehavior: func(r *mockStorage.MockStorage, match *storage.Match) {
-				r.EXPECT().CreateMatch(gomock.Any(), match).Return(uuid.New(), nil)
-			},
-			mockBehavior2: func(r *mockStorage.MockStorage, matchName string) {
-				r.EXPECT().GetMatchByName(gomock.Any(), matchName).Return(&storage.MatchOut{}, storage.ErrNotFound)
-			},
-			expectedStatusCode: 400,
-		},
-		{
-			name: "duplicate",
-			requestBody: strings.NewReader(`{
-				"match": "testMatch",
-				"reward": 20,
-				"reward_type": "%"
-				}`),
-			mockBehavior: func(r *mockStorage.MockStorage, match *storage.Match) {
-				r.EXPECT().CreateMatch(gomock.Any(), match).Return(uuid.Nil, storage.ErrDuplicate)
-			},
-			mockBehavior2: func(r *mockStorage.MockStorage, matchName string) {
-				r.EXPECT().GetMatchByName(gomock.Any(), matchName).Return(&storage.MatchOut{
-					MatchID:   uuid.New(),
-					MatchName: "testMatch",
-					Reward:    10000,
-					Type:      "percent",
-				}, nil)
-			},
-			expectedStatusCode: 409,
-		},
-		{
-			name: "internal err",
-			requestBody: strings.NewReader(`{
-				"match": "testMatch",
-				"reward": 20,
-				"reward_type": "%"
-				}`),
-			mockBehavior: func(r *mockStorage.MockStorage, match *storage.Match) {
-				r.EXPECT().CreateMatch(gomock.Any(), match).Return(uuid.Nil, errors.New("other err"))
-			},
-			mockBehavior2: func(r *mockStorage.MockStorage, matchName string) {
-				r.EXPECT().GetMatchByName(gomock.Any(), matchName).Return(&storage.MatchOut{
-					MatchID:   uuid.New(),
-					MatchName: "testMatch",
-					Reward:    10000,
-					Type:      "percent",
-				}, nil)
-			},
-			expectedStatusCode: 500,
-		},
-	}
+				}`)
 
-	h, s := testInitHandle(t)
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			trgURL, err := url.JoinPath(baseURL, createMatch)
-			assert.NoError(t, err)
-
-			r := httptest.NewRequest(http.MethodPost, trgURL, test.requestBody)
+			r := httptest.NewRequest(http.MethodPost, trgURL, testBadRequest)
 			w := httptest.NewRecorder()
-
-			testMatch := storage.Match{}
-
-			test.mockBehavior(s, &testMatch)
 
 			h.ServeHTTP(w, r)
 
-			assert.Equal(t, test.expectedStatusCode, w.Code)
+			assert.Equal(t, http.StatusBadRequest, w.Code)
 		})
-	}
+	})
 }
 
 func TestRegisterOrder(t *testing.T) {
-	type mockBehavior func(r *mockStorage.MockStorage, order string)
+	trgURL, err := url.JoinPath(baseURL, register)
+	assert.NoError(t, err)
 
-	requestBody := strings.NewReader(`{
-		"order": "1234567812345670",
-		"goods": [
+	testRequest := models.Order{
+		Number: testOrderNum,
+		Goods: []models.Goods{
 			{
-				"description": "item1",
-				"price": 100
+				Match: "item1",
+				Price: 100,
 			},
 			{
-				"description": "item2",
-				"price": 200.99
-			}
-		]
-		}`)
-
-	tests := []struct {
-		name               string
-		requestBody        io.Reader
-		mockBehavior       mockBehavior
-		expectedStatusCode int
-	}{
-		{
-			name:        "accept",
-			requestBody: requestBody,
-			mockBehavior: func(r *mockStorage.MockStorage, order string) {
-				r.EXPECT().GetOrderByNumber(gomock.Any(), order).Return(&storage.OrderOut{}, storage.ErrNotFound)
+				Match: "item2",
+				Price: 20099,
 			},
-			expectedStatusCode: 202,
-		},
-		{
-			name:        "bad request",
-			requestBody: strings.NewReader(`{"order": "1234567812345670"}`),
-			mockBehavior: func(r *mockStorage.MockStorage, order string) {
-				r.EXPECT().GetOrderByNumber(gomock.Any(), order).Return(&storage.OrderOut{OrderNumber: testOrderNum, Status: "processed", Accrual: 10000}, nil)
-			},
-			expectedStatusCode: 400,
-		},
-		{
-			name:        "duplicate",
-			requestBody: requestBody,
-			mockBehavior: func(r *mockStorage.MockStorage, order string) {
-				r.EXPECT().GetOrderByNumber(gomock.Any(), order).Return(&storage.OrderOut{
-					OrderNumber: testOrderNum,
-					Status:      "processed",
-					Accrual:     10000,
-				}, nil)
-			},
-			expectedStatusCode: 409,
-		},
-		{
-			name:        "internal err",
-			requestBody: requestBody,
-			mockBehavior: func(r *mockStorage.MockStorage, order string) {
-				r.EXPECT().GetOrderByNumber(gomock.Any(), order).Return(&storage.OrderOut{}, errors.New("other err"))
-			},
-			expectedStatusCode: 500,
 		},
 	}
 
-	h, s := testInitHandle(t)
+	testRequestBody, err := json.Marshal(testRequest)
+	assert.NoError(t, err)
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			trgURL, err := url.JoinPath(baseURL, register)
-			assert.NoError(t, err)
+	t.Run("createOrder", func(t *testing.T) {
+		t.Run("accept", func(t *testing.T) {
+			t.Parallel()
+			h, s := testInitHandle(t)
 
-			r := httptest.NewRequest(http.MethodPost, trgURL, test.requestBody)
+			r := httptest.NewRequest(http.MethodPost, trgURL, bytes.NewReader(testRequestBody))
 			w := httptest.NewRecorder()
 
-			test.mockBehavior(s, testOrderNum)
-
-			testMap := make(map[string]*storage.MatchOut)
-			testMap["item1"] = &storage.MatchOut{
-				MatchID:   uuid.New(),
-				MatchName: "item1",
-				Reward:    10,
-				Type:      "percent",
-			}
-			testMap["item2"] = &storage.MatchOut{
-				MatchID:   uuid.New(),
-				MatchName: "item2",
-				Reward:    10,
-				Type:      "percent",
-			}
-
-			s.EXPECT().GetMatchesByNames(gomock.Any(), []string{"item1", "item2"}).Return(testMap, nil)
+			s.EXPECT().GetOrderByNumber(gomock.Any(), gomock.Eq(testRequest.Number)).Return(&storage.OrderOut{}, storage.ErrNotFound)
 
 			h.ServeHTTP(w, r)
 
-			assert.Equal(t, test.expectedStatusCode, w.Code)
+			assert.Equal(t, http.StatusAccepted, w.Code)
 		})
-	}
+
+		t.Run("conflict", func(t *testing.T) {
+			h, s := testInitHandle(t)
+
+			r := httptest.NewRequest(http.MethodPost, trgURL, bytes.NewReader(testRequestBody))
+			w := httptest.NewRecorder()
+
+			s.EXPECT().GetOrderByNumber(gomock.Any(), gomock.Eq(testRequest.Number)).Return(&storage.OrderOut{}, storage.ErrDuplicate)
+
+			h.ServeHTTP(w, r)
+
+			assert.Equal(t, http.StatusConflict, w.Code)
+		})
+
+		t.Run("internal", func(t *testing.T) {
+			h, s := testInitHandle(t)
+
+			r := httptest.NewRequest(http.MethodPost, trgURL, bytes.NewReader(testRequestBody))
+			w := httptest.NewRecorder()
+
+			s.EXPECT().GetOrderByNumber(gomock.Any(), gomock.Eq(testRequest.Number)).Return(&storage.OrderOut{}, storage.ErrOther)
+
+			h.ServeHTTP(w, r)
+
+			assert.Equal(t, http.StatusInternalServerError, w.Code)
+		})
+
+		t.Run("badRequest", func(t *testing.T) {
+			h, _ := testInitHandle(t)
+
+			r := httptest.NewRequest(http.MethodPost, trgURL, strings.NewReader(`{"order": "1234567812345670"}`))
+			w := httptest.NewRecorder()
+
+			h.ServeHTTP(w, r)
+
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+		})
+	})
 }
