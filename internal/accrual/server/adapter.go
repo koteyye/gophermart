@@ -8,13 +8,9 @@ import (
 	"net/http"
 
 	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/service"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
 	"github.com/sergeizaitcev/gophermart/pkg/luhn"
-)
-
-var (
-	ErrOrderEmpty   = errors.New("order is empty")
-	ErrOrderInvalid = errors.New("order number invalid")
-	ErrNoGoods      = errors.New("order doesnt contain goods")
 )
 
 // parseOrder парсит запрос на регистрацию заказа и валидирует его
@@ -57,13 +53,13 @@ func parseMatch(r io.Reader) (models.Match, error) {
 
 // mapErrorToResponse маппит ошибку на соответствующий код ответа
 func mapErrorToResponse(w http.ResponseWriter, err error) {
-	if errors.Is(err, models.ErrDuplicate) || errors.Is(err, models.ErrOrderRegistered) {
+	if errors.Is(err, storage.ErrDuplicate) || errors.Is(err, service.ErrOrderRegistered) {
 		w.WriteHeader(http.StatusConflict)
 	}
-	if errors.Is(err, models.ErrNotFound) {
+	if errors.Is(err, storage.ErrNotFound) {
 		w.WriteHeader(http.StatusNotFound)
 	}
-	if errors.Is(err, models.ErrOther) {
+	if errors.Is(err, storage.ErrOther) {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
