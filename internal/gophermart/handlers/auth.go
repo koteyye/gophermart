@@ -41,7 +41,7 @@ func (h *handler) auth(next http.Handler) http.Handler {
 
 		userID, err := h.service.Verify(ctx, token)
 		if err != nil {
-			if errors.Is(err, storage.ErrNotFound) {
+			if errors.Is(err, service.ErrNotFound) {
 				w.WriteHeader(http.StatusUnauthorized)
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)

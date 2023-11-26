@@ -15,7 +15,7 @@ import (
 )
 
 // OperationQueue определяет очередь с балансовыми операциями.
-type OperationQueue = queue.FIFO[string]
+type OperationQueue = queue.FIFO[Operation]
 
 // Balance определяет баланс пользователя.
 type Balance struct {
@@ -89,10 +89,11 @@ func (s OperationStatus) Value() (driver.Value, error) {
 
 // Operation определяет балансовую операцию.
 type Operation struct {
-	Order     string          `json:"order"`
-	Sum       monetary.Unit   `json:"sum"`
-	Status    OperationStatus `json:"-"`
-	UpdatedAt time.Time       `json:"-"`
+	ID          uuid.UUID       `json:"-"`
+	Order       string          `json:"order"`
+	Sum         monetary.Unit   `json:"sum"`
+	Status      OperationStatus `json:"-"`
+	ProcessedAt time.Time       `json:"processed_at,omitempty"`
 }
 
 // Balance возвращает текущий баланс пользователя.
@@ -120,7 +121,7 @@ func (s *Service) Withdraw(
 	order string,
 	amount monetary.Unit,
 ) error {
-	err := s.storage.CreateOperation(ctx, userID, order, amount)
+	operationID, err := s.storage.CreateOperation(ctx, userID, order, amount)
 	if err != nil {
 		return fmt.Errorf("withdrawal of the amount from the balance: %w", err)
 	}
@@ -130,7 +131,7 @@ func (s *Service) Withdraw(
 	go func() {
 		ctx, cancel := s.withCancel()
 		defer cancel()
-		s.operations.Enqueue(ctx, order)
+		s.operations.Enqueue(ctx, Operation{ID: operationID, Order: order})
 		s.wg.Done()
 	}()
 
@@ -142,8 +143,8 @@ func (s *Service) operationProcessing() {
 	defer cancel()
 
 	for {
-		err := s.operationTransaction(ctx, func(order string) (bool, error) {
-			status, err := s.storage.OrderStatus(ctx, order)
+		err := s.operationTransaction(ctx, func(operation Operation) (bool, error) {
+			status, err := s.storage.OrderStatus(ctx, operation.Order)
 			if err != nil {
 				if errors.Is(err, ErrNotFound) {
 					return false, err
@@ -153,14 +154,18 @@ func (s *Service) operationProcessing() {
 
 			switch status {
 			case OrderStatusInvalid:
-				err := s.storage.UpdateOperationStatus(ctx, order, OperationStatusError)
+				err := s.storage.UpdateOperationStatus(ctx, operation.Order, OperationStatusError)
 				return false, err
 			case OrderStatusNew, OrderStatusProcessing:
 				return true, nil
 			}
 
-			err = s.storage.PerformOperation(ctx, order)
-			return false, err
+			err = s.storage.PerformOperation(ctx, operation.ID)
+			if err != nil {
+				return true, err
+			}
+
+			return false, nil
 		})
 		if err != nil {
 			break
@@ -170,14 +175,14 @@ func (s *Service) operationProcessing() {
 
 func (s *Service) operationTransaction(
 	ctx context.Context,
-	fn func(order string) (bool, error),
+	fn func(operation Operation) (bool, error),
 ) error {
-	order, err := s.operations.Dequeue(ctx)
+	operation, err := s.operations.Dequeue(ctx)
 	if err != nil {
 		return err
 	}
 
-	rollback, err := fn(order)
+	rollback, err := fn(operation)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return err
@@ -186,7 +191,7 @@ func (s *Service) operationTransaction(
 	}
 
 	if rollback {
-		return s.operations.Enqueue(ctx, order)
+		return s.operations.Enqueue(ctx, operation)
 	}
 
 	return nil

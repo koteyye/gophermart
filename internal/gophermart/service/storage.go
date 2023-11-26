@@ -62,8 +62,13 @@ type Orders interface {
 
 // Operations описывает интерфейс обработки балансовых операций.
 type Operations interface {
-	// CreateOperation создает новую балансовую операцию.
-	CreateOperation(ctx context.Context, userID uuid.UUID, order string, amount monetary.Unit) error
+	// CreateOperation создает новую балансовую операцию и возвращает её ID.
+	CreateOperation(
+		ctx context.Context,
+		userID uuid.UUID,
+		order string,
+		amount monetary.Unit,
+	) (uuid.UUID, error)
 
 	// Operations возвращает все балансовые операции пользователя.
 	Operations(ctx context.Context, userID uuid.UUID) ([]Operation, error)
@@ -72,5 +77,5 @@ type Operations interface {
 	UpdateOperationStatus(ctx context.Context, order string, status OperationStatus) error
 
 	// PerformOperation выполняет операцию над балансом пользователя.
-	PerformOperation(ctx context.Context, order string) error
+	PerformOperation(ctx context.Context, operationID uuid.UUID) error
 }

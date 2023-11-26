@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS orders (
 
 CREATE TABLE IF NOT EXISTS operations (
 	id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-	order_number varchar NOT NULL PRIMARY KEY,
+	order_number varchar NOT NULL,
 	amount int,
 	status operation_status DEFAULT 'RUN',
 	balance_id uuid,
