@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"path"
 	"time"
 
@@ -95,9 +94,9 @@ func NewClient(addr string, opts *ClientOption) *Client {
 // OrderInfo возвращает информацию о расчёте начислений баллов лояльности за
 // совершённый заказ.
 func (c *Client) OrderInfo(ctx context.Context, order string) (*service.AccrualOrderInfo, error) {
-	u := c.preparseURL(path.Join("api", "orders", order))
+	u := c.addr + "/" + path.Join("api", "orders", order)
 
-	res, err := c.get(ctx, u.String())
+	res, err := c.get(ctx, u)
 	if err != nil {
 		return nil, fmt.Errorf("executing a get request: %w", err)
 	}
@@ -122,19 +121,6 @@ func decodeOrderInfo(r io.Reader) (*service.AccrualOrderInfo, error) {
 		return nil, err
 	}
 	return &info, nil
-}
-
-func (c *Client) preparseURL(path string) url.URL {
-	scheme := "https"
-	n := len(scheme)
-	if !c.opts.Secure {
-		n--
-	}
-	return url.URL{
-		Scheme: scheme[:n],
-		Host:   c.addr,
-		Path:   path,
-	}
 }
 
 func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
