@@ -25,6 +25,7 @@ func NewService(s storage.Storage) *Service {
 	return &Service{
 		termCh:  make(chan struct{}),
 		storage: s,
+		wg: &sync.WaitGroup{},
 	}
 }
 
