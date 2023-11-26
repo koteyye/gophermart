@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
 )
 
 type OrderSuite struct {
@@ -27,8 +27,13 @@ func (suite *OrderSuite) SetupSuite() {
 
 	ctx := context.Background()
 
+	u := service.User{
+		Login:    "login",
+		Password: "password",
+	}
+
 	var err error
-	suite.userID, err = suite.storage.CreateUser(ctx, "login", "password")
+	suite.userID, err = suite.storage.CreateUser(ctx, u)
 	suite.Require().NoError(err)
 
 	suite.orders = []string{"order_1", "order_2"}
@@ -60,53 +65,27 @@ func (suite *OrderSuite) TestA_CreateOrder() {
 	})
 }
 
-func (suite *OrderSuite) TestB_GetOrder() {
+func (suite *OrderSuite) TestB_Orders() {
 	ctx := context.Background()
 
 	suite.Run("found", func() {
-		want := &storage.Order{
-			UserID: suite.userID,
-			Number: suite.orders[0],
-			Status: storage.OrderStatusNew,
-		}
-
-		got, err := suite.storage.GetOrder(ctx, suite.orders[0])
-
-		if suite.NoError(err) && suite.NotEmpty(got.UpdatedAt) {
-			got.UpdatedAt = time.Time{}
-			suite.Equal(want, got)
-		}
-	})
-
-	suite.Run("not_found", func() {
-		_, err := suite.storage.GetOrder(ctx, "invalid")
-		suite.Error(err)
-	})
-}
-
-func (suite *OrderSuite) TestB_GetOrders() {
-	ctx := context.Background()
-
-	suite.Run("found", func() {
-		want := []storage.Order{
+		want := []service.Order{
 			{
-				UserID: suite.userID,
 				Number: suite.orders[0],
-				Status: storage.OrderStatusNew,
+				Status: service.OrderStatusNew,
 			},
 			{
-				UserID: suite.userID,
 				Number: suite.orders[1],
-				Status: storage.OrderStatusNew,
+				Status: service.OrderStatusNew,
 			},
 		}
 
-		got, err := suite.storage.GetOrders(ctx, suite.userID)
+		got, err := suite.storage.Orders(ctx, suite.userID)
 
 		if suite.NoError(err) && suite.Len(got, len(want)) {
 			for i := 0; i < len(want); i++ {
-				if suite.NotEmpty(got[i].UpdatedAt) {
-					got[i].UpdatedAt = time.Time{}
+				if suite.NotEmpty(got[i].UploadedAt) {
+					got[i].UploadedAt = time.Time{}
 				}
 			}
 			suite.Equal(want, got)
@@ -114,7 +93,7 @@ func (suite *OrderSuite) TestB_GetOrders() {
 	})
 
 	suite.Run("not_found", func() {
-		_, err := suite.storage.GetOrders(ctx, uuid.Nil)
+		_, err := suite.storage.Orders(ctx, uuid.Nil)
 		suite.Error(err)
 	})
 }
@@ -123,24 +102,8 @@ func (suite *OrderSuite) TestC_UpdateOrder() {
 	ctx := context.Background()
 
 	suite.Run("success", func() {
-		err := suite.storage.UpdateOrder(ctx, suite.orders[0], storage.OrderStatusProcessed, 10)
+		err := suite.storage.UpdateOrder(ctx, suite.orders[0], service.OrderStatusProcessed, 10)
 		suite.NoError(err)
-	})
-
-	suite.Run("get_updated", func() {
-		want := &storage.Order{
-			UserID:  suite.userID,
-			Number:  suite.orders[0],
-			Status:  storage.OrderStatusProcessed,
-			Accrual: 10,
-		}
-
-		got, err := suite.storage.GetOrder(ctx, suite.orders[0])
-
-		if suite.NoError(err) && suite.NotEmpty(got.UpdatedAt) {
-			got.UpdatedAt = time.Time{}
-			suite.Equal(want, got)
-		}
 	})
 }
 
@@ -148,36 +111,7 @@ func (suite *OrderSuite) TestC_UpdateOrderStatus() {
 	ctx := context.Background()
 
 	suite.Run("success", func() {
-		err := suite.storage.UpdateOrderStatus(ctx, suite.orders[1], storage.OrderStatusInvalid)
+		err := suite.storage.UpdateOrderStatus(ctx, suite.orders[1], service.OrderStatusInvalid)
 		suite.NoError(err)
-	})
-
-	suite.Run("get_updated", func() {
-		want := &storage.Order{
-			UserID: suite.userID,
-			Number: suite.orders[1],
-			Status: storage.OrderStatusInvalid,
-		}
-
-		got, err := suite.storage.GetOrder(ctx, suite.orders[1])
-
-		if suite.NoError(err) && suite.NotEmpty(got.UpdatedAt) {
-			got.UpdatedAt = time.Time{}
-			suite.Equal(want, got)
-		}
-	})
-}
-
-func (suite *OrderSuite) TestD_DeleteOrder() {
-	ctx := context.Background()
-
-	suite.Run("success", func() {
-		err := suite.storage.DeleteOrder(ctx, suite.orders[1])
-		suite.NoError(err)
-	})
-
-	suite.Run("get_deleted", func() {
-		_, err := suite.storage.GetOrder(ctx, suite.orders[1])
-		suite.Error(err)
 	})
 }

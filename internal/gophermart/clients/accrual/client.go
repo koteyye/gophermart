@@ -152,37 +152,30 @@ func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
 }
 
 func (c *Client) sendRequest(req *http.Request) (*http.Response, error) {
-	var res *http.Response
-	var err error
+	ctx := req.Context()
+	n := c.opts.Retry
 
-	err = c.retry(req.Context(), func() error {
-		res, err = c.client.Do(req)
-		return err
-	})
-
-	return res, err
-}
-
-func (c *Client) retry(ctx context.Context, f func() error) error {
-	for i := 0; i < c.opts.Retry-1; i++ {
-		err := f()
+	for n > 0 {
+		res, err := c.client.Do(req)
 		if err == nil {
-			return nil
+			return res, nil
 		}
 
 		ne, ok := err.(net.Error)
 		if errors.Is(err, io.EOF) || (ok && ne.Timeout()) {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil, ctx.Err()
 			case <-time.After(c.opts.Backoff):
+				n--
 				continue
 			}
 		}
 
-		return err
+		return nil, err
 	}
-	return f()
+
+	return nil, errors.New("TODO: add error message")
 }
 
 func gracefulClose(res *http.Response) {
