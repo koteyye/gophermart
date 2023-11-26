@@ -2,6 +2,7 @@ package accrual
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,8 @@ import (
 	"time"
 
 	"log/slog"
+
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
 )
 
 var defaultOption = &ClientOption{
@@ -91,7 +94,7 @@ func NewClient(addr string, opts *ClientOption) *Client {
 
 // OrderInfo возвращает информацию о расчёте начислений баллов лояльности за
 // совершённый заказ.
-func (c *Client) OrderInfo(ctx context.Context, order string) (*OrderInfo, error) {
+func (c *Client) OrderInfo(ctx context.Context, order string) (*service.AccrualOrderInfo, error) {
 	u := c.preparseURL(path.Join("api", "orders", order))
 
 	res, err := c.get(ctx, u.String())
@@ -109,6 +112,15 @@ func (c *Client) OrderInfo(ctx context.Context, order string) (*OrderInfo, error
 		return nil, fmt.Errorf("decoding an order info: %w", err)
 	}
 
+	return info, nil
+}
+
+func decodeOrderInfo(r io.Reader) (*service.AccrualOrderInfo, error) {
+	var info service.AccrualOrderInfo
+	err := json.NewDecoder(r).Decode(&info)
+	if err != nil {
+		return nil, err
+	}
 	return &info, nil
 }
 

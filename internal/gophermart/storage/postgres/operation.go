@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
 	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
 
@@ -39,8 +39,8 @@ func (s *Storage) CreateOperation(
 	})
 }
 
-func (s *Storage) GetOperation(ctx context.Context, order string) (*storage.Operation, error) {
-	var operation storage.Operation
+func (s *Storage) Operation(ctx context.Context, order string) (*service.Operation, error) {
+	var operation service.Operation
 
 	query := `SELECT
 		b.user_id, o.order_number, o.amount, o.status, o.updated_at
@@ -49,9 +49,8 @@ func (s *Storage) GetOperation(ctx context.Context, order string) (*storage.Oper
 	WHERE o.order_number = $1 AND o.deleted_at IS NULL;`
 
 	err := s.db.QueryRowContext(ctx, query, order).Scan(
-		&operation.UserID,
-		&operation.OrderNumber,
-		&operation.Amount,
+		&operation.Order,
+		&operation.Sum,
 		&operation.Status,
 		&operation.UpdatedAt,
 	)
@@ -62,12 +61,12 @@ func (s *Storage) GetOperation(ctx context.Context, order string) (*storage.Oper
 	return &operation, nil
 }
 
-func (s *Storage) GetOperations(
+func (s *Storage) Operations(
 	ctx context.Context,
 	userID uuid.UUID,
-) ([]storage.Operation, error) {
+) ([]service.Operation, error) {
 	query := `SELECT
-		b.user_id, o.order_number, o.amount, o.status, o.updated_at
+		o.order_number, o.amount, o.status, o.updated_at
 	FROM operations AS o INNER JOIN balance AS b
 		ON o.balance_id = b.id
 	WHERE b.user_id = $1 AND b.deleted_at IS NULL
@@ -79,15 +78,14 @@ func (s *Storage) GetOperations(
 	}
 	defer rows.Close()
 
-	var operations []storage.Operation
+	var operations []service.Operation
 
 	for rows.Next() {
-		var operation storage.Operation
+		var operation service.Operation
 
 		err = rows.Scan(
-			&operation.UserID,
-			&operation.OrderNumber,
-			&operation.Amount,
+			&operation.Order,
+			&operation.Sum,
 			&operation.Status,
 			&operation.UpdatedAt,
 		)
@@ -104,7 +102,7 @@ func (s *Storage) GetOperations(
 	}
 
 	if len(operations) == 0 {
-		return nil, storage.ErrNotFound
+		return nil, service.ErrNotFound
 	}
 
 	return operations, nil
@@ -113,7 +111,7 @@ func (s *Storage) GetOperations(
 func (s *Storage) UpdateOperationStatus(
 	ctx context.Context,
 	order string,
-	status storage.OperationStatus,
+	status service.OperationStatus,
 ) error {
 	query := `UPDATE operations
 	SET status = $1, updated_at = now()
@@ -122,19 +120,6 @@ func (s *Storage) UpdateOperationStatus(
 	_, err := s.db.ExecContext(ctx, query, status, order)
 	if err != nil {
 		return fmt.Errorf("updating an operation state: %w", errorHandling(err))
-	}
-
-	return nil
-}
-
-func (s *Storage) DeleteOperation(ctx context.Context, order string) error {
-	query := `UPDATE operations
-	SET deleted_at = now()
-	WHERE order_number = $1;`
-
-	_, err := s.db.ExecContext(ctx, query, order)
-	if err != nil {
-		return fmt.Errorf("deleting an operation: %w", errorHandling(err))
 	}
 
 	return nil

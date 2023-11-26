@@ -12,7 +12,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/accrual"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/clients/accrual"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
 )
 
 type TransportMock struct {
@@ -72,9 +73,9 @@ func (suite *ClientSuite) SetupTest() {
 }
 
 func (suite *ClientSuite) TestOK() {
-	want := &accrual.OrderInfo{
+	want := &service.AccrualOrderInfo{
 		Order:   "1",
-		Status:  accrual.StatusRegistered,
+		Status:  service.OrderStatusRegistered,
 		Accrual: 1000,
 	}
 
@@ -92,7 +93,7 @@ func (suite *ClientSuite) TestNotRegistered() {
 		Return(http.StatusNoContent, struct{}{}, nil)
 
 	_, err := suite.client.OrderInfo(context.Background(), "2")
-	suite.ErrorIs(err, accrual.ErrOrderNotRegistered)
+	suite.ErrorIs(err, service.ErrOrderNotRegistered)
 }
 
 func (suite *ClientSuite) TestTooManyRequest() {
@@ -102,9 +103,9 @@ func (suite *ClientSuite) TestTooManyRequest() {
 
 	_, err := suite.client.OrderInfo(context.Background(), "3")
 
-	var exhausted *accrual.ResourceExhaustedError
+	var exhausted *service.ResourceExhaustedError
 	if suite.ErrorAs(err, &exhausted) {
-		suite.Equal(60*time.Second, exhausted.RetryAfter())
+		suite.Equal(60*time.Second, exhausted.RetryAfter)
 	}
 }
 
@@ -113,5 +114,5 @@ func (suite *ClientSuite) TestInternalServerError() {
 		Return(http.StatusInternalServerError, struct{}{}, nil)
 
 	_, err := suite.client.OrderInfo(context.Background(), "4")
-	suite.ErrorIs(err, accrual.ErrInternalServerError)
+	suite.ErrorIs(err, service.ErrInternalServerError)
 }

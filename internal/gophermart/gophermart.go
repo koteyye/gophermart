@@ -16,12 +16,14 @@ import (
 	"github.com/sergeizaitcev/gophermart/pkg/sign"
 )
 
+// Run запускает gophermart и блокируется до тех пор, пока не сработает
+// контекст или функция не вернёт ошибку.
 func Run(ctx context.Context) error {
-	cmd := commands.New("gophermart", runServer)
+	cmd := commands.New("gophermart", runGophermart)
 	return cmd.Execute(ctx)
 }
 
-func runServer(ctx context.Context, c *config.Config) error {
+func runGophermart(ctx context.Context, c *config.Config) error {
 	signer, err := newSigner(c)
 	if err != nil {
 		return fmt.Errorf("creating a new signer: %w", err)
@@ -40,8 +42,15 @@ func runServer(ctx context.Context, c *config.Config) error {
 
 	logger := newLogger(c)
 
-	service := service.NewService(logger, storage, signer)
-	handler := handlers.NewHandler(service)
+	service := service.NewService(service.ServiceOptions{
+		Logger:  logger,
+		Accrual: nil,
+		Storage: storage,
+		Signer:  signer,
+	})
+	defer service.Close()
+
+	handler := handlers.NewHandler(logger, service)
 
 	return httpserver.ListenAndServe(ctx, c.RunAddress, handler)
 }

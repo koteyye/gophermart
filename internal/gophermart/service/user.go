@@ -6,33 +6,37 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
-	"github.com/sergeizaitcev/gophermart/pkg/sign"
 )
 
-// userService определяет сервис регистрации и аутентификации.
-type userService struct {
-	storage storage.Auth
-	signer  sign.Signer
+// User определяет связку логин-пароль пользователя.
+type User struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
 }
 
-// newUserService возвращает новый экземпляр userService.
-func newUserService(auth storage.Auth, signer sign.Signer) *userService {
-	return &userService{
-		storage: auth,
-		signer:  signer,
+// Validate возвращает ошибку, если связка логин-пароль не действительна.
+func (u User) Validate() error {
+	const maxPassLen = 72
+	if u.Login == "" {
+		return errors.New("login must be not empty")
 	}
+	if u.Password == "" {
+		return errors.New("pass must be not empty")
+	}
+	if len(u.Password) > maxPassLen {
+		return fmt.Errorf("length of pass must be is less than or equal to %d", maxPassLen)
+	}
+	return nil
 }
 
 // SignUp выполняет регистрацию нового пользователя и возвращает токен аутентификации.
-func (s *userService) SignUp(ctx context.Context, login, pass string) (token string, err error) {
-	id, err := s.register(ctx, login, pass)
+func (s *Service) SignUp(ctx context.Context, u User) (token string, err error) {
+	payload, err := s.register(ctx, u)
 	if err != nil {
 		return "", fmt.Errorf("registering a new user: %w", err)
 	}
 
-	token, err = s.signer.Sign(id)
+	token, err = s.signer.Sign(payload)
 	if err != nil {
 		return "", fmt.Errorf("creating a token: %w", err)
 	}
@@ -41,13 +45,13 @@ func (s *userService) SignUp(ctx context.Context, login, pass string) (token str
 }
 
 // SignIn выполняет вход пользователя и возвращает токен аутентификации.
-func (s *userService) SignIn(ctx context.Context, login, pass string) (token string, err error) {
-	id, err := s.login(ctx, login, pass)
+func (s *Service) SignIn(ctx context.Context, u User) (token string, err error) {
+	payload, err := s.login(ctx, u)
 	if err != nil {
 		return "", fmt.Errorf("user authorization: %w", err)
 	}
 
-	token, err = s.signer.Sign(id)
+	token, err = s.signer.Sign(payload)
 	if err != nil {
 		return "", fmt.Errorf("creating a token: %w", err)
 	}
@@ -56,67 +60,54 @@ func (s *userService) SignIn(ctx context.Context, login, pass string) (token str
 }
 
 // Verify проверяет токен аутентификации и возвращает уникальный ID пользователя.
-func (s *userService) Verify(ctx context.Context, token string) (id string, err error) {
-	id, err = s.signer.Parse(token)
+func (s *Service) Verify(ctx context.Context, token string) (uuid.UUID, error) {
+	payload, err := s.signer.Parse(token)
 	if err != nil {
-		return "", fmt.Errorf("token verification: %w", err)
+		return uuid.Nil, fmt.Errorf("token verification: %w", err)
 	}
 
-	userID, err := uuid.Parse(id)
+	userID, err := uuid.Parse(payload)
 	if err != nil {
-		return "", fmt.Errorf("parsing UUID: %w", err)
+		return uuid.Nil, fmt.Errorf("parsing UUID: %w", err)
 	}
 
-	_, err = s.storage.GetLogin(ctx, userID)
+	exists, err := s.storage.UserExists(ctx, userID)
 	if err != nil {
-		return "", fmt.Errorf("checking a user: %w", err)
+		return uuid.Nil, fmt.Errorf("user search: %w", err)
+	}
+	if !exists {
+		return uuid.Nil, errors.New("user not found")
 	}
 
-	return id, nil
+	return userID, nil
 }
 
-func (s *userService) Balance(ctx context.Context, id string)
-
 // register регистрирует нового пользователя и возвращает уникальный ID.
-func (s *userService) register(ctx context.Context, login, pass string) (id string, err error) {
-	err = validate(login, pass)
+func (s *Service) register(ctx context.Context, u User) (id string, err error) {
+	err = u.Validate()
 	if err != nil {
 		return "", fmt.Errorf("validation: %w", err)
 	}
 
-	uid, err := s.storage.CreateUser(ctx, login, pass)
+	userID, err := s.storage.CreateUser(ctx, u)
 	if err != nil {
 		return "", fmt.Errorf("creating a new user: %w", err)
 	}
 
-	return uid.String(), nil
+	return userID.String(), nil
 }
 
 // login проводит аутентификацию пользователя и возвращает уникальный ID.
-func (s *userService) login(ctx context.Context, login, pass string) (id string, err error) {
-	err = validate(login, pass)
+func (s *Service) login(ctx context.Context, u User) (id string, err error) {
+	err = u.Validate()
 	if err != nil {
 		return "", fmt.Errorf("validation: %w", err)
 	}
 
-	uid, err := s.storage.GetUser(ctx, login, pass)
+	userID, err := s.storage.UserID(ctx, u)
 	if err != nil {
-		return "", fmt.Errorf("getting a user: %w", err)
+		return "", fmt.Errorf("user search: %w", err)
 	}
 
-	return uid.String(), nil
-}
-
-func validate(login, pass string) error {
-	const maxPassLen = 72
-	if login == "" {
-		return errors.New("login must be not empty")
-	}
-	if pass == "" {
-		return errors.New("pass must be not empty")
-	}
-	if len(pass) > maxPassLen {
-		return fmt.Errorf("length of pass must be is less than or equal to %d", maxPassLen)
-	}
-	return nil
+	return userID.String(), nil
 }

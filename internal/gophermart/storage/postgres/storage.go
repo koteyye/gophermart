@@ -10,10 +10,10 @@ import (
 
 	"github.com/sergeizaitcev/gophermart/deployments/gophermart/migrations"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/config"
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
 )
 
-var _ storage.Storage = (*Storage)(nil)
+var _ service.Storage = (*Storage)(nil)
 
 type Storage struct {
 	db *sql.DB

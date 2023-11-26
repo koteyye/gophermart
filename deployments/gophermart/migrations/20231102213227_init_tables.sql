@@ -1,16 +1,13 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TYPE order_status AS ENUM ('new', 'processed', 'processing', 'invalid');
+CREATE TYPE order_status AS ENUM ('NEW', 'PROCESSED', 'PROCESSING', 'INVALID');
 
-CREATE TYPE operation_status AS ENUM ('run', 'done', 'error');
+CREATE TYPE operation_status AS ENUM ('RUN', 'DONE', 'ERROR');
 
 CREATE TABLE IF NOT EXISTS users (
 	id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
 	login varchar(128) NOT NULL UNIQUE,
-	hashed_password varchar(128) NOT NULL,
-	created_at timestamp DEFAULT now(),
-	updated_at timestamp DEFAULT now(),
-	deleted_at timestamp
+	hashed_password varchar(128) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS balance (
@@ -18,32 +15,27 @@ CREATE TABLE IF NOT EXISTS balance (
 	user_id uuid NOT NULL,
 	amount int NOT NULL DEFAULT 0,
 	withdrawn int NOT NULL DEFAULT 0,
-	created_at timestamp DEFAULT now(),
-	updated_at timestamp DEFAULT now(),
-	deleted_at timestamp,
 	FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS orders (
 	number varchar NOT NULL PRIMARY KEY,
-	status order_status DEFAULT 'new',
+	status order_status DEFAULT 'NEW',
 	accrual int NOT NULL DEFAULT 0,
 	user_created uuid,
 	created_at timestamp DEFAULT now(),
 	updated_at timestamp DEFAULT now(),
-	deleted_at timestamp,
 	FOREIGN KEY (user_created) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS operations (
 	id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-	order_number varchar,
+	order_number varchar NOT NULL PRIMARY KEY,
 	amount int,
-	status operation_status DEFAULT 'run',
+	status operation_status DEFAULT 'RUN',
 	balance_id uuid,
 	created_at timestamp DEFAULT now(),
 	updated_at timestamp DEFAULT now(),
-	deleted_at timestamp,
 	FOREIGN KEY (balance_id) REFERENCES balance(id),
 	FOREIGN KEY (order_number) REFERENCES orders(number)
 );

@@ -69,19 +69,21 @@ func (suite *UserSuite) TestB_GetUser() {
 	})
 }
 
-func (suite *UserSuite) TestB_GetLogin() {
+func (suite *UserSuite) TestB_UserExists() {
 	ctx := context.Background()
 
 	suite.Run("found", func() {
-		login, err := suite.storage.GetLogin(ctx, suite.userID)
+		got, err := suite.storage.UserExists(ctx, suite.userID)
 		if suite.NoError(err) {
-			suite.Equal(suite.login, login)
+			suite.True(got)
 		}
 	})
 
 	suite.Run("not_found", func() {
-		_, err := suite.storage.GetLogin(ctx, uuid.Nil)
-		suite.Error(err)
+		got, err := suite.storage.UserExists(ctx, uuid.Nil)
+		if suite.NoError(err) {
+			suite.False(got)
+		}
 	})
 }
 

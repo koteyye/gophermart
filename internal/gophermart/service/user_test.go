@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
-	mocks_storage "github.com/sergeizaitcev/gophermart/internal/gophermart/storage/mocks"
+	mocks_storage "github.com/sergeizaitcev/gophermart/internal/gophermart/service/mocks"
 	"github.com/sergeizaitcev/gophermart/pkg/randutil"
 	"github.com/sergeizaitcev/gophermart/pkg/sign"
 )

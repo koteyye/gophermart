@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
 	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
 
@@ -31,9 +31,9 @@ func (s *Storage) CreateOrder(ctx context.Context, userID uuid.UUID, order strin
 		// Если текущий пользователь или другой пользователь ранее загрузил
 		// номер заказа, то возвращаем ошибку.
 		if creatorUserID == userID {
-			return storage.ErrDuplicate
+			return service.ErrDuplicate
 		} else if creatorUserID != uuid.Nil && creatorUserID != userID {
-			return storage.ErrDuplicateOtherUser
+			return service.ErrDuplicateOtherUser
 		}
 
 		_, err = tx.ExecContext(ctx, query2, order, userID)
@@ -45,31 +45,22 @@ func (s *Storage) CreateOrder(ctx context.Context, userID uuid.UUID, order strin
 	})
 }
 
-func (s *Storage) GetOrder(ctx context.Context, order string) (*storage.Order, error) {
-	var info storage.Order
+func (s *Storage) OrderStatus(ctx context.Context, order string) (service.OrderStatus, error) {
+	var status service.OrderStatus
 
-	query := `SELECT
-		number, status, accrual, user_created, updated_at
-	FROM orders
-	WHERE number = $1 and deleted_at is null;`
+	query := "SELECT status FROM orders WHERE number = $1;"
 
-	err := s.db.QueryRowContext(ctx, query, order).Scan(
-		&info.Number,
-		&info.Status,
-		&info.Accrual,
-		&info.UserID,
-		&info.UpdatedAt,
-	)
+	err := s.db.QueryRowContext(ctx, query, order).Scan(&status)
 	if err != nil {
-		return nil, fmt.Errorf("order search: %w", err)
+		return service.OrderStatusUnknown, fmt.Errorf("order search: %w", errorHandling(err))
 	}
 
-	return &info, nil
+	return status, nil
 }
 
-func (s *Storage) GetOrders(ctx context.Context, userID uuid.UUID) ([]storage.Order, error) {
+func (s *Storage) Orders(ctx context.Context, userID uuid.UUID) ([]service.Order, error) {
 	query := `SELECT
-		number, status, accrual, user_created, updated_at
+	number, status, accrual, created_at
 	FROM orders
 	WHERE user_created = $1;`
 
@@ -79,17 +70,16 @@ func (s *Storage) GetOrders(ctx context.Context, userID uuid.UUID) ([]storage.Or
 	}
 	defer rows.Close()
 
-	var orders []storage.Order
+	var orders []service.Order
 
 	for rows.Next() {
-		var order storage.Order
+		var order service.Order
 
 		err = rows.Scan(
 			&order.Number,
 			&order.Status,
 			&order.Accrual,
-			&order.UserID,
-			&order.UpdatedAt,
+			&order.UploadedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("copying order fields: %w", errorHandling(err))
@@ -104,7 +94,7 @@ func (s *Storage) GetOrders(ctx context.Context, userID uuid.UUID) ([]storage.Or
 	}
 
 	if len(orders) == 0 {
-		return nil, storage.ErrNotFound
+		return nil, service.ErrNotFound
 	}
 
 	return orders, nil
@@ -113,7 +103,7 @@ func (s *Storage) GetOrders(ctx context.Context, userID uuid.UUID) ([]storage.Or
 func (s *Storage) UpdateOrder(
 	ctx context.Context,
 	order string,
-	status storage.OrderStatus,
+	status service.OrderStatus,
 	accrual monetary.Unit,
 ) error {
 	query := `UPDATE orders
@@ -131,7 +121,7 @@ func (s *Storage) UpdateOrder(
 func (s *Storage) UpdateOrderStatus(
 	ctx context.Context,
 	order string,
-	status storage.OrderStatus,
+	status service.OrderStatus,
 ) error {
 	query := `UPDATE orders
 	SET status = $1, updated_at = now()
@@ -140,17 +130,6 @@ func (s *Storage) UpdateOrderStatus(
 	_, err := s.db.ExecContext(ctx, query, status, order)
 	if err != nil {
 		return fmt.Errorf("updating an order status: %w", errorHandling(err))
-	}
-
-	return nil
-}
-
-func (s *Storage) DeleteOrder(ctx context.Context, order string) error {
-	query := "UPDATE orders SET deleted_at = now() WHERE number = $1;"
-
-	_, err := s.db.ExecContext(ctx, query, order)
-	if err != nil {
-		return fmt.Errorf("deleting an order: %w", errorHandling(err))
 	}
 
 	return nil
