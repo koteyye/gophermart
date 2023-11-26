@@ -44,6 +44,14 @@ func (s OrderStatus) String() string {
 	return orderValues[0]
 }
 
+func (s OrderStatus) MarshalJSON() ([]byte, error) {
+	str := s.String()
+	b := make([]byte, 0, len(`""`)+len(str))
+	b = append(append(b, '"'), str...)
+	b = append(b, '"')
+	return b, nil
+}
+
 func (s *OrderStatus) Scan(value any) error {
 	if value == nil {
 		*s = OrderStatusUnknown
@@ -191,6 +199,8 @@ func (fsm orderFSM) processing(ctx context.Context) (rollback bool, err error) {
 		return true, err
 	}
 
+	fsm.service.logger.Info(fmt.Sprintf("%+v", info))
+
 	switch info.Status {
 	case AccrualOrderStatusInvalid:
 		err := fsm.service.storage.UpdateOrderStatus(ctx, fsm.order, OrderStatusInvalid)
@@ -200,7 +210,10 @@ func (fsm orderFSM) processing(ctx context.Context) (rollback bool, err error) {
 		return true, err
 	}
 
-	// PROCESSED
+	err = fsm.service.storage.UpdateOrder(ctx, fsm.order, OrderStatusProcessed, info.Accrual)
+	if err != nil {
+		return true, err
+	}
 
 	return false, nil
 }

@@ -91,7 +91,7 @@ func (s *Storage) Balance(ctx context.Context, userID uuid.UUID) (*service.Balan
 	query := `SELECT
 		amount, withdrawn
 	FROM balance
-	WHERE user_id = $1 AND deleted_at IS NULL;`
+	WHERE user_id = $1;`
 
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
 		&balance.Current,
