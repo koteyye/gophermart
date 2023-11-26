@@ -3,13 +3,12 @@ package config
 import (
 	"encoding/base64"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"time"
 
 	"log/slog"
-
-	"github.com/caarlos0/env/v10"
 )
 
 // Config определяет конфигурацию для gophermart.
@@ -33,10 +32,14 @@ type Config struct {
 	TokenTTL time.Duration `env:"TOKEN_TTL"`
 }
 
-// Clone возвращает копию конфигурации.
-func (c *Config) Clone() *Config {
-	c2 := *c
-	return &c2
+// SetFlags устанавливает флаги командной строки.
+func (c *Config) SetFlags(fs *flag.FlagSet) {
+	fs.StringVar(&c.RunAddress, "a", "", "run address")
+	fs.StringVar(&c.DatabaseURI, "d", "", "database uri")
+	fs.StringVar(&c.AccrualSystemAddress, "r", "", "accrual system address")
+	fs.StringVar(&c.SecretKeyPath, "s", "secret_key.txt", "secret key path")
+	fs.TextVar(&c.Level, "v", slog.LevelInfo, "logging level")
+	fs.DurationVar(&c.TokenTTL, "t", 0, "token lifetime")
 }
 
 // Validate возвращает ошибку, если одно из полей конфигурации не валидно.
@@ -75,15 +78,4 @@ func (c *Config) SecretKey() ([]byte, error) {
 	}
 
 	return dst, nil
-}
-
-// Parse парсит переменные окружения и устанавливает их в переданную конфигурацию.
-func Parse(c *Config) error {
-	c2 := c.Clone()
-	err := env.Parse(c)
-	if err != nil {
-		*c = *c2
-		return fmt.Errorf("parsing env: %w", err)
-	}
-	return nil
 }

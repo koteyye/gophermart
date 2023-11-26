@@ -29,7 +29,7 @@ func init() {
 // Up запускает миграцию в БД.
 func Up(ctx context.Context, db *sql.DB) error {
 	if err := goose.UpContext(ctx, db, "."); err != nil {
-		return fmt.Errorf("migrations: up migrations: %w", err)
+		return fmt.Errorf("migrations up: %w", err)
 	}
 	return nil
 }
@@ -37,7 +37,7 @@ func Up(ctx context.Context, db *sql.DB) error {
 // Down откатывает миграцию в БД.
 func Down(ctx context.Context, db *sql.DB) error {
 	if err := goose.DownContext(ctx, db, "."); err != nil {
-		return fmt.Errorf("migrations: down migrations: %w", err)
+		return fmt.Errorf("migrations down: %w", err)
 	}
 	return nil
 }
