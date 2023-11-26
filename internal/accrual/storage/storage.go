@@ -68,13 +68,13 @@ const (
 func (o OrderStatus) String() string {
 	switch o {
 	case Registered:
-		return "registered"
+		return "REGISTERED"
 	case Invalid:
-		return "invalid"
+		return "INVALID"
 	case Processing:
-		return "processing"
+		return "PROCESSING"
 	case Processed:
-		return "processed"
+		return "PROCESSED"
 	}
 	return "unknow"
 }

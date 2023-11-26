@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-create type order_status as enum ('registered', 'invalid', 'processing', 'processed');
+create type order_status as enum ('REGISTERED', 'PROCESSED', 'PROCESSING', 'INVALID');
 comment on type order_status is 'возможные статусы заказа';
 
 create type rewards as enum ('percent', 'natural');
@@ -9,7 +9,7 @@ comment on type rewards is 'возможные типы вознагражден
 create table orders (
     id uuid not null default gen_random_uuid() unique,
     order_number varchar not null,
-    status order_status default 'registered',
+    status order_status default 'REGISTERED',
     accrual int not null default 0,
     created_at timestamp not null default now(),
     updated_at timestamp not null default now(),
