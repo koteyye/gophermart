@@ -11,6 +11,8 @@ import (
 	"log/slog"
 )
 
+var defaultEncodedSecretKey = []byte("VFhFM2w2WWFvMElETkc2ekFVa1dlVlB0QUt3d0xHVFM=")
+
 // Config определяет конфигурацию для gophermart.
 type Config struct {
 	// Уровень логирования.
@@ -37,7 +39,7 @@ func (c *Config) SetFlags(fs *flag.FlagSet) {
 	fs.StringVar(&c.RunAddress, "a", "", "run address")
 	fs.StringVar(&c.DatabaseURI, "d", "", "database uri")
 	fs.StringVar(&c.AccrualSystemAddress, "r", "", "accrual system address")
-	fs.StringVar(&c.SecretKeyPath, "s", "./secret_key.txt", "secret key path")
+	fs.StringVar(&c.SecretKeyPath, "s", "secret_key.txt", "secret key path")
 	fs.TextVar(&c.Level, "v", slog.LevelInfo, "logging level")
 	fs.DurationVar(&c.TokenTTL, "t", 0, "token lifetime")
 }
@@ -64,18 +66,26 @@ func (c *Config) Validate() error {
 
 // SecretKey возвращает секретный ключ, хранящийся в SecretKeyPath.
 func (c *Config) SecretKey() ([]byte, error) {
-	src, err := os.ReadFile(c.SecretKeyPath)
+	var encodedSecretKey []byte
+
+	_, err := os.Stat(c.SecretKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("reading a file: %w", err)
+		encodedSecretKey = make([]byte, len(defaultEncodedSecretKey))
+		copy(encodedSecretKey, defaultEncodedSecretKey)
+	} else {
+		encodedSecretKey, err = os.ReadFile(c.SecretKeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("reading a file: %w", err)
+		}
 	}
 
 	base64 := base64.StdEncoding
-	dst := make([]byte, base64.DecodedLen(len(src)))
+	secretKey := make([]byte, base64.DecodedLen(len(encodedSecretKey)))
 
-	_, err = base64.Decode(dst, src)
+	_, err = base64.Decode(secretKey, encodedSecretKey)
 	if err != nil {
 		return nil, fmt.Errorf("base64 decoding: %w", err)
 	}
 
-	return dst, nil
+	return secretKey, nil
 }
