@@ -111,6 +111,8 @@ func (c *Client) OrderInfo(ctx context.Context, order string) (*service.AccrualO
 		return nil, fmt.Errorf("decoding an order info: %w", err)
 	}
 
+	slog.Info(info.Order, info.Accrual.String(), info.Status)
+
 	return info, nil
 }
 

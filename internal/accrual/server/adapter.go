@@ -55,13 +55,17 @@ func parseMatch(r io.Reader) (models.Match, error) {
 func mapErrorToResponse(w http.ResponseWriter, err error) {
 	if errors.Is(err, storage.ErrDuplicate) || errors.Is(err, service.ErrOrderRegistered) {
 		w.WriteHeader(http.StatusConflict)
+		return
 	}
 	if errors.Is(err, storage.ErrNotFound) {
 		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 	if errors.Is(err, storage.ErrOther) {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }

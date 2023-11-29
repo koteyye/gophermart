@@ -78,4 +78,7 @@ type Operations interface {
 
 	// PerformOperation выполняет операцию над балансом пользователя.
 	PerformOperation(ctx context.Context, operationID uuid.UUID) error
+
+	// BalanceIncrement выполняет операцию зачисления над балансом пользователя
+	BalanceIncrement(ctx context.Context, order string) error 
 }

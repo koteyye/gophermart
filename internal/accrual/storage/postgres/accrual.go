@@ -3,10 +3,11 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
 	"github.com/sergeizaitcev/gophermart/pkg/monetary"
@@ -41,40 +42,46 @@ func (s *Storage) GetMatchesByNames(
 	matchNames []string,
 ) (map[string]*storage.MatchOut, error) {
 	matches := make(map[string]*storage.MatchOut, len(matchNames))
+	
+	query := `select id, reward, reward_type from matches m where match_name like $1;`
 
-	query := "select id, match_name, reward, reward_type from matches where match_name = any ($1)"
+	err := s.transaction(ctx, func(tx *sql.Tx) error {
+		for _, match := range matchNames {
+			var matchID uuid.UUID
+			var reward monetary.Unit
+			var rewardType string
+			
+			words := strings.Fields(match)
+			for _, word := range words {
+				err := tx.QueryRowContext(ctx, query, word).Scan(
+					&matchID,
+					&reward,
+					&rewardType,
+				)
 
-	rows, err := s.db.QueryContext(ctx, query, pq.Array(matchNames))
-	if err != nil {
-		return nil, fmt.Errorf("search mathes err: %w", errorHandle(err))
-	}
-	defer func() { _ = rows.Close() }()
+				if errors.Is(errorHandle(err), storage.ErrNotFound) {
+					continue
+				}
+				if errors.Is(errorHandle(err), storage.ErrOther) {
+					return errorHandle(err)
+				}
+			}
+			if matchID == uuid.Nil {
+				continue
+			}
 
-	for rows.Next() {
-		var matchID uuid.UUID
-		var matchName string
-		var reward monetary.Unit
-		var rewardType string
-
-		err := rows.Scan(
-			&matchID,
-			&matchName,
-			&reward,
-			&rewardType,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("scan matches err: %w", errorHandle(err))
+			matches[match] = &storage.MatchOut{
+				MatchID:   matchID,
+				MatchName: match,
+				Reward:    reward, 
+				Type: rewardType,
+			}
 		}
-
-		matches[matchName] = &storage.MatchOut{
-			MatchID:   matchID,
-			MatchName: matchName,
-			Reward:    reward, Type: rewardType,
-		}
-	}
-	err = rows.Err()
+		
+		return nil
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("transaction err: %w", errorHandle(err))
 	}
 
 	return matches, nil
@@ -175,7 +182,13 @@ func (s *Storage) CreateMatch(ctx context.Context, match *storage.Match) (uuid.U
 func (s *Storage) GetMatchByName(ctx context.Context, matchName string) (*storage.MatchOut, error) {
 	var matches storage.MatchOut
 
-	err := s.db.QueryRowContext(ctx, "select id, match_name, reward, reward_type from matches where match_name in ($1)", matchName).
+	matchName = strings.ReplaceAll(matchName, " ", "|")
+
+	query := `select id, match_name, reward, reward_type 
+	from matches m where to_tsvector('english', match_name) @@ to_tsquery('english', $1);`
+
+
+	err := s.db.QueryRowContext(ctx, query, matchName).
 		Scan(&matches.MatchID, &matches.MatchName, &matches.Reward, &matches.Type)
 	if err != nil {
 		return nil, fmt.Errorf("select match err: %w", errorHandle(err))

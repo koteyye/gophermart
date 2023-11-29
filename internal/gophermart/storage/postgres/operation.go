@@ -160,3 +160,25 @@ func (s *Storage) PerformOperation(ctx context.Context, operationID uuid.UUID) e
 		return nil
 	})
 }
+
+func (s *Storage) BalanceIncrement(ctx context.Context, order string) error {
+	query1 := "select accrual, user_created from orders where number = $1"
+	query2 := "update balance set amount = amount + $1 where user_id = $2"
+
+	return s.transaction(ctx, func(tx *sql.Tx) error {
+		var orderAmount monetary.Unit
+		var userID uuid.UUID
+
+		err := tx.QueryRowContext(ctx, query1, order).Scan(&orderAmount, &userID)
+		if err != nil {
+			return fmt.Errorf("order search: %w", errorHandling(err))
+		}
+
+		_, err = tx.ExecContext(ctx, query2, orderAmount, userID)
+		if err != nil {
+			return fmt.Errorf("updating a balance: %w", errorHandling(err))
+		}
+
+		return nil
+	})
+}

@@ -209,8 +209,12 @@ func (fsm orderFSM) processing(ctx context.Context) (rollback bool, err error) {
 		err := fsm.service.storage.UpdateOrderStatus(ctx, fsm.order, OrderStatusProcessing)
 		return true, err
 	}
-
 	err = fsm.service.storage.UpdateOrder(ctx, fsm.order, OrderStatusProcessed, info.Accrual)
+	if err != nil {
+		return true, err
+	}
+
+	err = fsm.service.storage.BalanceIncrement(ctx, fsm.order)
 	if err != nil {
 		return true, err
 	}
