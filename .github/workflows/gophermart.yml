@@ -16,8 +16,9 @@ jobs:
     services:
       accrual-postgres:
         image: postgres
+        ports:
+          - 5432:5432
         env:
-          POSTGRES_PORT: 5432
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: praktikum
         options: >-
@@ -27,8 +28,9 @@ jobs:
           --health-retries 5
       gophermart-postgres:
         image: postgres
+        ports:
+          - 5433:5432
         env:
-          POSTGRES_PORT: 5433
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: praktikum
         options: >-
@@ -68,8 +70,8 @@ jobs:
             -gophermart-binary-path=cmd/gophermart/gophermart \
             -gophermart-host=localhost \
             -gophermart-port=8080 \
-          -gophermart-database-uri="postgresql://postgres:postgres@gophermart-postgres/praktikum?sslmode=disable" \
+          -gophermart-database-uri="postgresql://postgres:postgres@gophermart-postgres:5433/praktikum?sslmode=disable" \
             -accrual-binary-path=cmd/accrual/accrual \
             -accrual-host=localhost \
             -accrual-port=$(random unused-port) \
-            -accrual-database-uri="postgresql://postgres:postgres@accrual-postgres/praktikum?sslmode=disable"
+            -accrual-database-uri="postgresql://postgres:postgres@accrual-postgres:5432/praktikum?sslmode=disable"
