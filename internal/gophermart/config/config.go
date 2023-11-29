@@ -37,7 +37,7 @@ func (c *Config) SetFlags(fs *flag.FlagSet) {
 	fs.StringVar(&c.RunAddress, "a", "", "run address")
 	fs.StringVar(&c.DatabaseURI, "d", "", "database uri")
 	fs.StringVar(&c.AccrualSystemAddress, "r", "", "accrual system address")
-	fs.StringVar(&c.SecretKeyPath, "s", "secret_key.txt", "secret key path")
+	fs.StringVar(&c.SecretKeyPath, "s", "./secret_key.txt", "secret key path")
 	fs.TextVar(&c.Level, "v", slog.LevelInfo, "logging level")
 	fs.DurationVar(&c.TokenTTL, "t", 0, "token lifetime")
 }
