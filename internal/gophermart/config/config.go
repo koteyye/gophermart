@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"os"
 	"time"
 
 	"log/slog"
@@ -66,23 +65,23 @@ func (c *Config) Validate() error {
 
 // SecretKey возвращает секретный ключ, хранящийся в SecretKeyPath.
 func (c *Config) SecretKey() ([]byte, error) {
-	var encodedSecretKey []byte
+	// var encodedSecretKey []byte
 
-	_, err := os.Stat(c.SecretKeyPath)
-	if err != nil {
-		encodedSecretKey = make([]byte, len(defaultEncodedSecretKey))
-		copy(encodedSecretKey, defaultEncodedSecretKey)
-	} else {
-		encodedSecretKey, err = os.ReadFile(c.SecretKeyPath)
-		if err != nil {
-			return nil, fmt.Errorf("reading a file: %w", err)
-		}
-	}
+	// _, err := os.Stat(c.SecretKeyPath)
+	// if err != nil {
+	encodedSecretKey := make([]byte, len(defaultEncodedSecretKey))
+	copy(encodedSecretKey, defaultEncodedSecretKey)
+	// } else {
+	// 	encodedSecretKey, err = os.ReadFile(c.SecretKeyPath)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("reading a file: %w", err)
+	// 	}
+	// }
 
 	base64 := base64.StdEncoding
 	secretKey := make([]byte, base64.DecodedLen(len(encodedSecretKey)))
 
-	_, err = base64.Decode(secretKey, encodedSecretKey)
+	_, err := base64.Decode(secretKey, encodedSecretKey)
 	if err != nil {
 		return nil, fmt.Errorf("base64 decoding: %w", err)
 	}
