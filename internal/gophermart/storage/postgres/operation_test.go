@@ -83,6 +83,11 @@ func (suite *OperationSuite) TestB_PerformOperation() {
 	suite.Run("success", func() {
 		err := suite.storage.PerformOperation(ctx, suite.operationID[0])
 		suite.NoError(err)
+
+		balance, err := suite.storage.Balance(ctx, suite.userID)
+		suite.NoError(err)
+
+		suite.T().Logf("%+v", balance)
 	})
 
 	suite.Run("bellow zero", func() {
