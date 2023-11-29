@@ -79,7 +79,7 @@ func TestAccrualPostgres(t *testing.T) {
 	assert.NoError(t, err)
 
 	//Тест получения заказа
-	want := &storage.OrderOut{OrderNumber: testOrderNumber, Status: "processed", Accrual: 500}
+	want := &storage.OrderOut{OrderNumber: testOrderNumber, Status: "PROCESSED", Accrual: 500}
 	order, err := accrual.GetOrderByNumber(context.Background(), testOrderNumber)
 	assert.NoError(t, err)
 	assert.Equal(t, order, want)
