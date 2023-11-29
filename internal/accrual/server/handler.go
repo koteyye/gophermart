@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -47,11 +46,6 @@ func (h *handler) registerOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	}
-
-	slog.Info(o.Number)
-	for _, good := range o.Goods {
-		slog.Info(good.Match)
 	}
 
 	ctx := r.Context()
