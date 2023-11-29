@@ -130,7 +130,7 @@ func TestCreateMatch(t *testing.T) {
 			r := httptest.NewRequest(http.MethodPost, trgURL, testRequest)
 			w := httptest.NewRecorder()
 
-			s.EXPECT().GetMatchByName(gomock.Any(), testMatch.MatchName).Return(&storage.MatchOut{}, storage.ErrNotFound)
+			s.EXPECT().GetMatchByName(gomock.Any(), gomock.Any()).Return(&storage.MatchOut{}, storage.ErrNotFound)
 			s.EXPECT().CreateMatch(gomock.Any(), &testMatch).Return(uuid.New(), (error)(nil))
 
 			h.ServeHTTP(w, r)
