@@ -11,6 +11,8 @@ import (
 	"log/slog"
 )
 
+var defaultEncodedSecretKey = []byte("VFhFM2w2WWFvMElETkc2ekFVa1dlVlB0QUt3d0xHVFM=")
+
 // Config определяет конфигурацию для gophermart.
 type Config struct {
 	// Уровень логирования.
@@ -64,9 +66,17 @@ func (c *Config) Validate() error {
 
 // SecretKey возвращает секретный ключ, хранящийся в SecretKeyPath.
 func (c *Config) SecretKey() ([]byte, error) {
-	encodedSecretKey, err := os.ReadFile(c.SecretKeyPath)
+	var encodedSecretKey []byte
+
+	_, err := os.Stat(c.SecretKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("reading a file: %w", err)
+		encodedSecretKey = make([]byte, len(defaultEncodedSecretKey))
+		copy(encodedSecretKey, defaultEncodedSecretKey)
+	} else {
+		encodedSecretKey, err = os.ReadFile(c.SecretKeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("reading a file: %w", err)
+		}
 	}
 
 	base64 := base64.StdEncoding
