@@ -25,6 +25,8 @@ func Run(ctx context.Context) error {
 }
 
 func runGophermart(ctx context.Context, c *config.Config) error {
+	fmt.Sprintf("%+v", c)
+
 	signer, err := newSigner(c)
 	if err != nil {
 		return fmt.Errorf("creating a new signer: %w", err)
