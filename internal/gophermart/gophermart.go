@@ -7,6 +7,7 @@ import (
 
 	"log/slog"
 
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/clients/accrual"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/config"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/handlers"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
@@ -44,7 +45,7 @@ func runGophermart(ctx context.Context, c *config.Config) error {
 
 	service := service.NewService(service.ServiceOptions{
 		Logger:  logger,
-		Accrual: nil,
+		Accrual: accrual.NewClient(c.AccrualSystemAddress, nil),
 		Storage: storage,
 		Signer:  signer,
 	})

@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"path"
 	"time"
 
@@ -95,9 +94,9 @@ func NewClient(addr string, opts *ClientOption) *Client {
 // OrderInfo возвращает информацию о расчёте начислений баллов лояльности за
 // совершённый заказ.
 func (c *Client) OrderInfo(ctx context.Context, order string) (*service.AccrualOrderInfo, error) {
-	u := c.preparseURL(path.Join("api", "orders", order))
+	u := c.addr + "/" + path.Join("api", "orders", order)
 
-	res, err := c.get(ctx, u.String())
+	res, err := c.get(ctx, u)
 	if err != nil {
 		return nil, fmt.Errorf("executing a get request: %w", err)
 	}
@@ -112,6 +111,8 @@ func (c *Client) OrderInfo(ctx context.Context, order string) (*service.AccrualO
 		return nil, fmt.Errorf("decoding an order info: %w", err)
 	}
 
+	slog.Info(info.Order, info.Accrual.String(), info.Status)
+
 	return info, nil
 }
 
@@ -122,19 +123,6 @@ func decodeOrderInfo(r io.Reader) (*service.AccrualOrderInfo, error) {
 		return nil, err
 	}
 	return &info, nil
-}
-
-func (c *Client) preparseURL(path string) url.URL {
-	scheme := "https"
-	n := len(scheme)
-	if !c.opts.Secure {
-		n--
-	}
-	return url.URL{
-		Scheme: scheme[:n],
-		Host:   c.addr,
-		Path:   path,
-	}
 }
 
 func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
@@ -152,37 +140,30 @@ func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
 }
 
 func (c *Client) sendRequest(req *http.Request) (*http.Response, error) {
-	var res *http.Response
-	var err error
+	ctx := req.Context()
+	n := c.opts.Retry
 
-	err = c.retry(req.Context(), func() error {
-		res, err = c.client.Do(req)
-		return err
-	})
-
-	return res, err
-}
-
-func (c *Client) retry(ctx context.Context, f func() error) error {
-	for i := 0; i < c.opts.Retry-1; i++ {
-		err := f()
+	for n > 0 {
+		res, err := c.client.Do(req)
 		if err == nil {
-			return nil
+			return res, nil
 		}
 
 		ne, ok := err.(net.Error)
 		if errors.Is(err, io.EOF) || (ok && ne.Timeout()) {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil, ctx.Err()
 			case <-time.After(c.opts.Backoff):
+				n--
 				continue
 			}
 		}
 
-		return err
+		return nil, err
 	}
-	return f()
+
+	return nil, errors.New("TODO: add error message")
 }
 
 func gracefulClose(res *http.Response) {

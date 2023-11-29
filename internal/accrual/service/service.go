@@ -25,6 +25,7 @@ func NewService(s storage.Storage) *Service {
 	return &Service{
 		termCh:  make(chan struct{}),
 		storage: s,
+		wg: &sync.WaitGroup{},
 	}
 }
 
@@ -49,7 +50,7 @@ func (s *Service) withCancel() (context.Context, context.CancelFunc) {
 func (s *Service) GetOrder(ctx context.Context, orderNumber string) (*models.OrderOut, error) {
 	order, err := s.storage.GetOrderByNumber(ctx, orderNumber)
 	if err != nil {
-		slog.Error(fmt.Errorf("get orrder by number %s err: %w", orderNumber, err).Error())
+		slog.Error(fmt.Errorf("get order by number %s err: %w", orderNumber, err).Error())
 		return &models.OrderOut{}, err
 	}
 	return &models.OrderOut{
@@ -101,8 +102,6 @@ func (s *Service) CreateOrder(order *models.Order) {
 	ctx, cancel := s.withCancel()
 	defer cancel()
 
-	goods := make([]*storage.Goods, len(order.Goods))
-	workGoods := make([]*workerGoods, len(order.Goods))
 	matchNames := make([]string, len(order.Goods))
 
 	for i, good := range order.Goods {
@@ -111,24 +110,32 @@ func (s *Service) CreateOrder(order *models.Order) {
 	// Проверяем наличие в БД указанного в заказе match и получаем его ID
 	matches, err := s.storage.GetMatchesByNames(ctx, matchNames)
 	if err != nil {
-		// Если ErrNotFound, то это штатное выполнение сценария
-		if errors.Is(err, storage.ErrNotFound) {
-			slog.Info(err.Error())
-			err := s.storage.CreateInvalidOrder(ctx, order.Number)
-			if err != nil {
-				slog.Error(err.Error())
-			}
-		}
 		slog.Error(err.Error())
 	}
+
+	if len(matches) == 0 {
+		err := s.storage.CreateInvalidOrder(ctx, order.Number)
+		if err != nil {
+			slog.Error(err.Error())
+			return
+		}
+		return
+	}
+
 	// Заполняем структуры для воркера
-	for i, good := range order.Goods {
-		goods[i] = &storage.Goods{MatchID: matches[good.Match].MatchID, Price: good.Price}
-		workGoods[i] = &workerGoods{
+	var goods []*storage.Goods
+	var workGoods []*workerGoods
+	for _, good := range order.Goods {
+		if matches[good.Match] == nil {
+			continue
+		}
+
+		goods = append(goods, &storage.Goods{MatchID: matches[good.Match].MatchID, Price: good.Price})
+		workGoods = append(workGoods, &workerGoods{
 			matchID:    matches[good.Match].MatchID,
 			price:      good.Price,
 			reward:     matches[good.Match].Reward.Float64(),
-			rewardType: matches[good.Match].Type}
+			rewardType: matches[good.Match].Type})
 	}
 
 	orderID, err := s.storage.CreateOrderWithGoods(ctx, order.Number, goods)

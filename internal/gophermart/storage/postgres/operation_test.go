@@ -8,14 +8,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
 )
 
 type OperationSuite struct {
 	CommonSuite
 
-	userID uuid.UUID
-	order  string
+	userID      uuid.UUID
+	operationID [2]uuid.UUID
+	order       string
 }
 
 func TestOperation(t *testing.T) {
@@ -27,112 +28,108 @@ func (suite *OperationSuite) SetupSuite() {
 
 	ctx := context.Background()
 
+	u := service.User{
+		Login:    "login",
+		Password: "password",
+	}
+
 	var err error
-	suite.userID, err = suite.storage.CreateUser(ctx, "login", "password")
+	suite.userID, err = suite.storage.CreateUser(ctx, u)
 	suite.Require().NoError(err)
 
 	suite.order = "order"
+
 	err = suite.storage.CreateOrder(ctx, suite.userID, suite.order)
+	suite.Require().NoError(err)
+
+	err = suite.storage.ProcessOrder(ctx, suite.order, 10)
 	suite.Require().NoError(err)
 }
 
 func (suite *OperationSuite) TestA_CreateOperation() {
 	ctx := context.Background()
 
-	suite.Run("success", func() {
-		err := suite.storage.CreateOperation(ctx, suite.userID, suite.order, 10)
+	suite.Run("bellow zero", func() {
+		_, err := suite.storage.CreateOperation(ctx, suite.userID, suite.order, 11)
+		suite.Error(err)
+	})
+
+	suite.Run("success 1", func() {
+		var err error
+		suite.operationID[0], err = suite.storage.CreateOperation(
+			ctx,
+			suite.userID,
+			suite.order,
+			10,
+		)
+		suite.NoError(err)
+	})
+
+	suite.Run("success 2", func() {
+		var err error
+		suite.operationID[1], err = suite.storage.CreateOperation(
+			ctx,
+			suite.userID,
+			suite.order,
+			10,
+		)
 		suite.NoError(err)
 	})
 }
 
-func (suite *OperationSuite) TestB_GetOperation() {
+func (suite *OperationSuite) TestB_PerformOperation() {
 	ctx := context.Background()
 
-	suite.Run("found", func() {
-		want := &storage.Operation{
-			UserID:      suite.userID,
-			OrderNumber: suite.order,
-			Amount:      10,
-			Status:      storage.OperationStatusRun,
-		}
+	suite.Run("success", func() {
+		err := suite.storage.PerformOperation(ctx, suite.operationID[0])
+		suite.NoError(err)
 
-		got, err := suite.storage.GetOperation(ctx, suite.order)
-		if suite.NoError(err) && suite.NotEmpty(got.UpdatedAt) {
-			got.UpdatedAt = time.Time{}
-			suite.Equal(want, got)
-		}
+		balance, err := suite.storage.Balance(ctx, suite.userID)
+		suite.NoError(err)
+
+		suite.T().Logf("%+v", balance)
 	})
 
-	suite.Run("not_found", func() {
-		_, err := suite.storage.GetOperation(ctx, "invalid")
+	suite.Run("bellow zero", func() {
+		err := suite.storage.PerformOperation(ctx, suite.operationID[1])
 		suite.Error(err)
 	})
 }
 
-func (suite *OperationSuite) TestB_GetOperations() {
+func (suite *OperationSuite) TestC_Operations() {
 	ctx := context.Background()
 
 	suite.Run("found", func() {
-		want := []storage.Operation{{
-			UserID:      suite.userID,
-			OrderNumber: suite.order,
-			Amount:      10,
-			Status:      storage.OperationStatusRun,
+		want := []service.Operation{{
+			Order:  suite.order,
+			Sum:    10,
+			Status: service.OperationStatusDone,
 		}}
 
-		got, err := suite.storage.GetOperations(ctx, suite.userID)
+		got, err := suite.storage.Operations(ctx, suite.userID)
 		if suite.NoError(err) && suite.Len(got, len(want)) {
 			for i := 0; i < len(want); i++ {
-				got[i].UpdatedAt = time.Time{}
+				got[i].ProcessedAt = time.Time{}
 			}
 			suite.Equal(want, got)
 		}
 	})
 
 	suite.Run("not_found", func() {
-		_, err := suite.storage.GetOperations(ctx, uuid.Nil)
+		_, err := suite.storage.Operations(ctx, uuid.Nil)
 		suite.Error(err)
 	})
 }
 
-func (suite *OperationSuite) TestC_UpdateOperationStatus() {
+func (suite *OperationSuite) TestD_UpdateOperationStatus() {
 	ctx := context.Background()
 
 	suite.Run("success", func() {
 		err := suite.storage.UpdateOperationStatus(
 			ctx,
 			suite.order,
-			storage.OperationStatusDone,
+			service.OperationStatusError,
 		)
 		suite.NoError(err)
-	})
-
-	suite.Run("get_updated", func() {
-		want := &storage.Operation{
-			UserID:      suite.userID,
-			OrderNumber: suite.order,
-			Amount:      10,
-			Status:      storage.OperationStatusDone,
-		}
-
-		got, err := suite.storage.GetOperation(ctx, suite.order)
-		if suite.NoError(err) && suite.NotEmpty(got.UpdatedAt) {
-			got.UpdatedAt = time.Time{}
-			suite.Equal(want, got)
-		}
-	})
-}
-
-func (suite *OperationSuite) TestD_DeleteOperation() {
-	ctx := context.Background()
-
-	suite.Run("success", func() {
-		err := suite.storage.DeleteOperation(ctx, suite.order)
-		suite.NoError(err)
-	})
-
-	suite.Run("get_deleted", func() {
-		_, err := suite.storage.GetOperation(ctx, suite.order)
-		suite.Error(err)
 	})
 }

@@ -75,7 +75,7 @@ func (suite *ClientSuite) SetupTest() {
 func (suite *ClientSuite) TestOK() {
 	want := &service.AccrualOrderInfo{
 		Order:   "1",
-		Status:  service.OrderStatusRegistered,
+		Status:  service.AccrualOrderStatusRegistered,
 		Accrual: 1000,
 	}
 

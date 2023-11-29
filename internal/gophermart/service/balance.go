@@ -90,6 +90,7 @@ func (s OperationStatus) Value() (driver.Value, error) {
 // Operation определяет балансовую операцию.
 type Operation struct {
 	ID          uuid.UUID       `json:"-"`
+	UserID      uuid.UUID       `json:"-"`
 	Order       string          `json:"order"`
 	Sum         monetary.Unit   `json:"sum"`
 	Status      OperationStatus `json:"-"`
@@ -131,7 +132,7 @@ func (s *Service) Withdraw(
 	go func() {
 		ctx, cancel := s.withCancel()
 		defer cancel()
-		s.operations.Enqueue(ctx, Operation{ID: operationID, Order: order})
+		s.operations.Enqueue(ctx, Operation{ID: operationID, UserID: userID, Order: order})
 		s.wg.Done()
 	}()
 
@@ -144,28 +145,8 @@ func (s *Service) operationProcessing() {
 
 	for {
 		err := s.operationTransaction(ctx, func(operation Operation) (bool, error) {
-			status, err := s.storage.OrderStatus(ctx, operation.Order)
-			if err != nil {
-				if errors.Is(err, ErrNotFound) {
-					return false, err
-				}
-				return true, err
-			}
-
-			switch status {
-			case OrderStatusInvalid:
-				err := s.storage.UpdateOperationStatus(ctx, operation.Order, OperationStatusError)
-				return false, err
-			case OrderStatusNew, OrderStatusProcessing:
-				return true, nil
-			}
-
-			err = s.storage.PerformOperation(ctx, operation.ID)
-			if err != nil {
-				return true, err
-			}
-
-			return false, nil
+			err := s.storage.PerformOperation(ctx, operation.ID)
+			return err != nil, err
 		})
 		if err != nil {
 			break

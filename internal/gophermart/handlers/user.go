@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -36,9 +35,7 @@ func (h *handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, token)
+	w.Header().Set("Authorization", "Bearer "+token)
 }
 
 func (h *handler) login(w http.ResponseWriter, r *http.Request) {
@@ -64,9 +61,7 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, token)
+	w.Header().Set("Authorization", "Bearer "+token)
 }
 
 func (h *handler) balance(w http.ResponseWriter, r *http.Request) {

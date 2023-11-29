@@ -30,7 +30,7 @@ func (err *ResourceExhaustedError) Error() string {
 
 // AccrualClient определяет интерфейс клиента accrual.
 //
-//go:generate mockgen -source=storage.go -destination=mocks/accrual_client.go
+//go:generate mockgen -source=accrual.go -destination=mocks/accrual_client.go
 type AccrualClient interface {
 	OrderInfo(ctx context.Context, order string) (*AccrualOrderInfo, error)
 }

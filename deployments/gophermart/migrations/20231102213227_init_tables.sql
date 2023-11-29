@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS balance (
 );
 
 CREATE TABLE IF NOT EXISTS orders (
-	number varchar NOT NULL PRIMARY KEY,
+	id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+	number varchar NOT NULL,
 	status order_status DEFAULT 'NEW',
 	accrual int NOT NULL DEFAULT 0,
 	user_created uuid,
@@ -36,8 +37,7 @@ CREATE TABLE IF NOT EXISTS operations (
 	balance_id uuid,
 	created_at timestamp DEFAULT now(),
 	updated_at timestamp DEFAULT now(),
-	FOREIGN KEY (balance_id) REFERENCES balance(id),
-	FOREIGN KEY (order_number) REFERENCES orders(number)
+	FOREIGN KEY (balance_id) REFERENCES balance(id)
 );
 -- +goose StatementEnd
 

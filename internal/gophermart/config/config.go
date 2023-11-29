@@ -64,18 +64,18 @@ func (c *Config) Validate() error {
 
 // SecretKey возвращает секретный ключ, хранящийся в SecretKeyPath.
 func (c *Config) SecretKey() ([]byte, error) {
-	src, err := os.ReadFile(c.SecretKeyPath)
+	encodedSecretKey, err := os.ReadFile(c.SecretKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading a file: %w", err)
 	}
 
 	base64 := base64.StdEncoding
-	dst := make([]byte, base64.DecodedLen(len(src)))
+	secretKey := make([]byte, base64.DecodedLen(len(encodedSecretKey)))
 
-	_, err = base64.Decode(dst, src)
+	_, err = base64.Decode(secretKey, encodedSecretKey)
 	if err != nil {
 		return nil, fmt.Errorf("base64 decoding: %w", err)
 	}
 
-	return dst, nil
+	return secretKey, nil
 }

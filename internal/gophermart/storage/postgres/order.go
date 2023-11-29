@@ -100,22 +100,29 @@ func (s *Storage) Orders(ctx context.Context, userID uuid.UUID) ([]service.Order
 	return orders, nil
 }
 
-func (s *Storage) UpdateOrder(
-	ctx context.Context,
-	order string,
-	status service.OrderStatus,
-	accrual monetary.Unit,
-) error {
-	query := `UPDATE orders
+func (s *Storage) ProcessOrder(ctx context.Context, order string, accrual monetary.Unit) error {
+	query1 := `UPDATE balance AS b
+	SET amount = amount + $1
+	FROM orders AS o
+	WHERE o.user_created = b.user_id AND o.number = $2;`
+
+	query2 := `UPDATE orders
 	SET status = $1, accrual = $2, updated_at = now()
 	WHERE number = $3;`
 
-	_, err := s.db.ExecContext(ctx, query, status, accrual, order)
-	if err != nil {
-		return fmt.Errorf("updating an order: %w", errorHandling(err))
-	}
+	return s.transaction(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, query1, accrual, order)
+		if err != nil {
+			return fmt.Errorf("updating a balance: %w", errorHandling(err))
+		}
 
-	return nil
+		_, err = tx.ExecContext(ctx, query2, service.OrderStatusProcessed, accrual, order)
+		if err != nil {
+			return fmt.Errorf("updating an order: %w", errorHandling(err))
+		}
+
+		return nil
+	})
 }
 
 func (s *Storage) UpdateOrderStatus(

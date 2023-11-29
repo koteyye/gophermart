@@ -122,10 +122,10 @@ func (s *Storage) PerformOperation(ctx context.Context, operationID uuid.UUID) e
 		b.id, b.amount, o.amount
 	FROM operations AS o INNER JOIN balance AS b
 		ON o.balance_id = b.id
-	WHERE id = $1;`
+	WHERE o.id = $1;`
 
 	query2 := `UPDATE balance
-	SET amount = amount - $1, withdrawn = withdrawn + $1, updated_at = now()
+	SET amount = amount - $1, withdrawn = withdrawn + $1
 	WHERE id = $2;`
 
 	query3 := `UPDATE operations
@@ -147,7 +147,7 @@ func (s *Storage) PerformOperation(ctx context.Context, operationID uuid.UUID) e
 			return service.ErrBalanceBelowZero
 		}
 
-		_, err = tx.ExecContext(ctx, query2, balanceID)
+		_, err = tx.ExecContext(ctx, query2, amount, balanceID)
 		if err != nil {
 			return fmt.Errorf("updating a balance: %w", errorHandling(err))
 		}
