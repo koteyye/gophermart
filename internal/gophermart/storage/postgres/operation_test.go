@@ -14,8 +14,9 @@ import (
 type OperationSuite struct {
 	CommonSuite
 
-	userID uuid.UUID
-	order  string
+	userID      uuid.UUID
+	operationID [2]uuid.UUID
+	order       string
 }
 
 func TestOperation(t *testing.T) {
@@ -37,27 +38,67 @@ func (suite *OperationSuite) SetupSuite() {
 	suite.Require().NoError(err)
 
 	suite.order = "order"
+
 	err = suite.storage.CreateOrder(ctx, suite.userID, suite.order)
+	suite.Require().NoError(err)
+
+	err = suite.storage.ProcessOrder(ctx, suite.order, 10)
 	suite.Require().NoError(err)
 }
 
 func (suite *OperationSuite) TestA_CreateOperation() {
 	ctx := context.Background()
 
-	suite.Run("success", func() {
-		_, err := suite.storage.CreateOperation(ctx, suite.userID, suite.order, 10)
+	suite.Run("bellow zero", func() {
+		_, err := suite.storage.CreateOperation(ctx, suite.userID, suite.order, 11)
+		suite.Error(err)
+	})
+
+	suite.Run("success 1", func() {
+		var err error
+		suite.operationID[0], err = suite.storage.CreateOperation(
+			ctx,
+			suite.userID,
+			suite.order,
+			10,
+		)
+		suite.NoError(err)
+	})
+
+	suite.Run("success 2", func() {
+		var err error
+		suite.operationID[1], err = suite.storage.CreateOperation(
+			ctx,
+			suite.userID,
+			suite.order,
+			10,
+		)
 		suite.NoError(err)
 	})
 }
 
-func (suite *OperationSuite) TestB_Operations() {
+func (suite *OperationSuite) TestB_PerformOperation() {
+	ctx := context.Background()
+
+	suite.Run("success", func() {
+		err := suite.storage.PerformOperation(ctx, suite.operationID[0])
+		suite.NoError(err)
+	})
+
+	suite.Run("bellow zero", func() {
+		err := suite.storage.PerformOperation(ctx, suite.operationID[1])
+		suite.Error(err)
+	})
+}
+
+func (suite *OperationSuite) TestC_Operations() {
 	ctx := context.Background()
 
 	suite.Run("found", func() {
 		want := []service.Operation{{
 			Order:  suite.order,
 			Sum:    10,
-			Status: service.OperationStatusRun,
+			Status: service.OperationStatusDone,
 		}}
 
 		got, err := suite.storage.Operations(ctx, suite.userID)
@@ -75,19 +116,15 @@ func (suite *OperationSuite) TestB_Operations() {
 	})
 }
 
-func (suite *OperationSuite) TestC_UpdateOperationStatus() {
+func (suite *OperationSuite) TestD_UpdateOperationStatus() {
 	ctx := context.Background()
 
 	suite.Run("success", func() {
 		err := suite.storage.UpdateOperationStatus(
 			ctx,
 			suite.order,
-			service.OperationStatusDone,
+			service.OperationStatusError,
 		)
 		suite.NoError(err)
 	})
-}
-
-func (suite *OperationSuite) TestC_PerformOperation() {
-	// TODO
 }

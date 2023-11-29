@@ -98,11 +98,11 @@ func (suite *OrderSuite) TestB_Orders() {
 	})
 }
 
-func (suite *OrderSuite) TestC_UpdateOrder() {
+func (suite *OrderSuite) TestC_ProcessOrder() {
 	ctx := context.Background()
 
 	suite.Run("success", func() {
-		err := suite.storage.UpdateOrder(ctx, suite.orders[0], service.OrderStatusProcessed, 10)
+		err := suite.storage.ProcessOrder(ctx, suite.orders[0], 10)
 		suite.NoError(err)
 	})
 }

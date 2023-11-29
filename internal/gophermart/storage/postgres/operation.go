@@ -122,10 +122,10 @@ func (s *Storage) PerformOperation(ctx context.Context, operationID uuid.UUID) e
 		b.id, b.amount, o.amount
 	FROM operations AS o INNER JOIN balance AS b
 		ON o.balance_id = b.id
-	WHERE id = $1;`
+	WHERE o.id = $1;`
 
 	query2 := `UPDATE balance
-	SET amount = amount - $1, withdrawn = withdrawn + $1, updated_at = now()
+	SET amount = amount - $1, withdrawn = withdrawn + $1
 	WHERE id = $2;`
 
 	query3 := `UPDATE operations
@@ -147,34 +147,12 @@ func (s *Storage) PerformOperation(ctx context.Context, operationID uuid.UUID) e
 			return service.ErrBalanceBelowZero
 		}
 
-		_, err = tx.ExecContext(ctx, query2, balanceID)
+		_, err = tx.ExecContext(ctx, query2, amount, balanceID)
 		if err != nil {
 			return fmt.Errorf("updating a balance: %w", errorHandling(err))
 		}
 
 		_, err = tx.ExecContext(ctx, query3, service.OperationStatusDone, operationID)
-		if err != nil {
-			return fmt.Errorf("updating a balance: %w", errorHandling(err))
-		}
-
-		return nil
-	})
-}
-
-func (s *Storage) BalanceIncrement(ctx context.Context, order string) error {
-	query1 := "select accrual, user_created from orders where number = $1"
-	query2 := "update balance set amount = amount + $1 where user_id = $2"
-
-	return s.transaction(ctx, func(tx *sql.Tx) error {
-		var orderAmount monetary.Unit
-		var userID uuid.UUID
-
-		err := tx.QueryRowContext(ctx, query1, order).Scan(&orderAmount, &userID)
-		if err != nil {
-			return fmt.Errorf("order search: %w", errorHandling(err))
-		}
-
-		_, err = tx.ExecContext(ctx, query2, orderAmount, userID)
 		if err != nil {
 			return fmt.Errorf("updating a balance: %w", errorHandling(err))
 		}

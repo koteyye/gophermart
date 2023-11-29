@@ -50,11 +50,11 @@ type Orders interface {
 	// OrderStatus возвращает статус заказа пользователя.
 	OrderStatus(ctx context.Context, order string) (OrderStatus, error)
 
-	// GetOrders возвращает все заказы пользователя.
+	// Orders возвращает все заказы пользователя.
 	Orders(ctx context.Context, userID uuid.UUID) ([]Order, error)
 
-	// UpdateOrder обновляет заказ пользователя.
-	UpdateOrder(ctx context.Context, order string, status OrderStatus, accrual monetary.Unit) error
+	// ProccessOrder обрабатывает заказ.
+	ProcessOrder(ctx context.Context, order string, accrual monetary.Unit) error
 
 	// UpdateOrderStatus обновляет статус заказа пользователя.
 	UpdateOrderStatus(ctx context.Context, order string, status OrderStatus) error
@@ -78,7 +78,4 @@ type Operations interface {
 
 	// PerformOperation выполняет операцию над балансом пользователя.
 	PerformOperation(ctx context.Context, operationID uuid.UUID) error
-
-	// BalanceIncrement выполняет операцию зачисления над балансом пользователя
-	BalanceIncrement(ctx context.Context, order string) error 
 }
