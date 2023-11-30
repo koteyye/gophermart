@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -13,13 +14,15 @@ import (
 // handler определяет HTTP-обработчик для accrual
 // реализует интерфейс http.Handler
 type handler struct {
+	logger *slog.Logger
 	mux     *chi.Mux
 	service *service.Service
 }
 
 // NewHandler возвращает новый экземпляр handler
-func NewHandler(s *service.Service) http.Handler {
+func NewHandler(logger *slog.Logger, s *service.Service) http.Handler {
 	r := &handler{
+		logger: logger,
 		mux:     chi.NewRouter(),
 		service: s,
 	}
@@ -77,7 +80,7 @@ func (h *handler) createMatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = h.service.CreateMatch(m)
+	err = h.service.CreateMatch(ctx, &m)
 	if err != nil {
 		mapErrorToResponse(w, err)
 		return
