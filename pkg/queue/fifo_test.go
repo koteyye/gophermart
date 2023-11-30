@@ -22,7 +22,7 @@ func TestFIFO(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			v, err := fifo.Dequeue(ctx)
 			if assert.NoError(t, err) {
-				t.Logf("pop: %d", v)
+				assert.Equal(t, i+1, v)
 			}
 		}
 
@@ -33,9 +33,7 @@ func TestFIFO(t *testing.T) {
 	}()
 
 	for i := 0; i < 10; i++ {
-		t.Logf("put: %d", i+1)
-		fifo.Enqueue(context.Background(), i+1)
-		t.Logf("size: %d", fifo.Size())
+		_ = fifo.Enqueue(context.Background(), i+1)
 	}
 
 	<-waitCh
