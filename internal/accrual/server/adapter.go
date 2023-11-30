@@ -11,6 +11,7 @@ import (
 	"github.com/sergeizaitcev/gophermart/internal/accrual/service"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
 	"github.com/sergeizaitcev/gophermart/pkg/luhn"
+	"github.com/sergeizaitcev/gophermart/pkg/strutil"
 )
 
 // parseOrder парсит запрос на регистрацию заказа и валидирует его
@@ -24,13 +25,12 @@ func parseOrder(r io.Reader) (models.Order, error) {
 	if o.Number == "" {
 		return models.Order{}, errors.New("order is empty")
 	}
-	if !luhn.Check(o.Number) {
+	if !strutil.OnlyDigits(o.Number) || !luhn.Check(o.Number) {
 		return models.Order{}, errors.New("order number invalid")
 	}
 	if len(o.Goods) == 0 {
 		return models.Order{}, errors.New("order doesnt contain goods")
 	}
-
 	return o, nil
 }
 
