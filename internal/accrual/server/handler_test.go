@@ -3,9 +3,11 @@ package server_test
 import (
 	"bytes"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -31,10 +33,13 @@ const (
 func testInitHandle(t *testing.T) (http.Handler, *mockStorage.MockStorage) {
 	c := gomock.NewController(t)
 	defer c.Finish()
+	opts := &slog.HandlerOptions{Level: slog.LevelInfo}
+	testHandler := slog.NewTextHandler(os.Stdout, opts)
+	testLogger := slog.New(testHandler)
 
 	s := mockStorage.NewMockStorage(c)
 	srv := service.NewService(s)
-	handler := server.NewHandler(srv)
+	handler := server.NewHandler(testLogger, srv)
 
 	return handler, s
 }
