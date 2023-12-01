@@ -10,15 +10,15 @@ import (
 // Структура потоко-безопасна.
 type FIFO[T any] struct {
 	once    sync.Once
-	list    chan *linkedList[T]
+	list    chan linkedList[T]
 	waiters chan struct{}
 }
 
 func (fifo *FIFO[T]) lazyInit() {
 	fifo.once.Do(func() {
-		fifo.list = make(chan *linkedList[T], 1)
+		fifo.list = make(chan linkedList[T], 1)
 		fifo.waiters = make(chan struct{}, 1)
-		fifo.list <- new(linkedList[T])
+		fifo.list <- linkedList[T]{}
 	})
 }
 
@@ -45,7 +45,7 @@ func (fifo *FIFO[T]) Size() int {
 func (fifo *FIFO[T]) Enqueue(ctx context.Context, value T) error {
 	fifo.lazyInit()
 
-	var list *linkedList[T]
+	var list linkedList[T]
 
 	select {
 	case <-ctx.Done():
@@ -71,7 +71,7 @@ func (fifo *FIFO[T]) Dequeue(ctx context.Context) (value T, err error) {
 	case <-fifo.waiters:
 	}
 
-	var list *linkedList[T]
+	var list linkedList[T]
 
 	select {
 	case <-ctx.Done():

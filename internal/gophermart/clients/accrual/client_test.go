@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/clients/accrual"
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/domain"
 )
 
 type TransportMock struct {
@@ -67,24 +67,26 @@ func TestClient(t *testing.T) {
 
 func (suite *ClientSuite) SetupTest() {
 	suite.transport = NewTransportMock()
-	suite.client = accrual.NewClient("localhost", &accrual.ClientOption{
+	suite.client = accrual.NewClient("//localhost", &accrual.ClientOption{
 		Transport: suite.transport,
 	})
 }
 
 func (suite *ClientSuite) TestOK() {
-	want := &service.AccrualOrderInfo{
-		Order:   "1",
-		Status:  service.AccrualOrderStatusRegistered,
-		Accrual: 1000,
+	want := map[string]any{
+		"Order":   "49927398716",
+		"Status":  domain.AccrualStatusRegistered.String(),
+		"Accrual": 1000.0,
 	}
 
 	suite.transport.On("RoundTrip", "GET", "/api/orders/1").
 		Return(http.StatusOK, want, nil)
 
-	got, err := suite.client.OrderInfo(context.Background(), "1")
+	got, err := suite.client.GetAccrualInfo(context.Background(), "1")
 	if suite.NoError(err) {
-		suite.Equal(want, got)
+		suite.EqualValues(want["Order"], got.OrderNumber)
+		suite.EqualValues(want["Status"], got.Status.String())
+		suite.EqualValues(want["Accrual"], got.Accrual.Float64())
 	}
 }
 
@@ -92,8 +94,8 @@ func (suite *ClientSuite) TestNotRegistered() {
 	suite.transport.On("RoundTrip", "GET", "/api/orders/2").
 		Return(http.StatusNoContent, struct{}{}, nil)
 
-	_, err := suite.client.OrderInfo(context.Background(), "2")
-	suite.ErrorIs(err, service.ErrOrderNotRegistered)
+	_, err := suite.client.GetAccrualInfo(context.Background(), "2")
+	suite.ErrorIs(err, domain.ErrOrderNotRegistered)
 }
 
 func (suite *ClientSuite) TestTooManyRequest() {
@@ -101,9 +103,9 @@ func (suite *ClientSuite) TestTooManyRequest() {
 	suite.transport.On("RoundTrip", "GET", "/api/orders/3").
 		Return(http.StatusTooManyRequests, struct{}{}, nil)
 
-	_, err := suite.client.OrderInfo(context.Background(), "3")
+	_, err := suite.client.GetAccrualInfo(context.Background(), "3")
 
-	var exhausted *service.ResourceExhaustedError
+	var exhausted *domain.ResourceExhaustedError
 	if suite.ErrorAs(err, &exhausted) {
 		suite.Equal(60*time.Second, exhausted.RetryAfter)
 	}
@@ -113,6 +115,6 @@ func (suite *ClientSuite) TestInternalServerError() {
 	suite.transport.On("RoundTrip", "GET", "/api/orders/4").
 		Return(http.StatusInternalServerError, struct{}{}, nil)
 
-	_, err := suite.client.OrderInfo(context.Background(), "4")
-	suite.ErrorIs(err, service.ErrInternalServerError)
+	_, err := suite.client.GetAccrualInfo(context.Background(), "4")
+	suite.ErrorIs(err, domain.ErrInternalServerError)
 }

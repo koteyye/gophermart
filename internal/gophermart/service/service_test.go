@@ -1,13 +1,14 @@
-package postgres_test
+package service_test
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/config"
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage/postgres"
+	"github.com/sergeizaitcev/gophermart/deployments/gophermart/migrations"
+	"github.com/sergeizaitcev/gophermart/pkg/postgres"
 )
 
 var flagDatabaseURI string
@@ -23,17 +24,17 @@ func init() {
 
 type CommonSuite struct {
 	suite.Suite
-	storage *postgres.Storage
+	db *sql.DB
 }
 
 func (suite *CommonSuite) SetupSuite() {
 	var err error
-	suite.storage, err = postgres.Connect(&config.Config{DatabaseURI: flagDatabaseURI})
+	suite.db, err = postgres.Connect(flagDatabaseURI)
 	suite.Require().NoError(err)
-	suite.Require().NoError(suite.storage.Up(context.Background()))
+	suite.Require().NoError(migrations.Up(context.Background(), suite.db))
 }
 
 func (suite *CommonSuite) TearDownSuite() {
-	suite.Require().NoError(suite.storage.Down(context.Background()))
-	suite.Require().NoError(suite.storage.Close())
+	suite.Require().NoError(migrations.Down(context.Background(), suite.db))
+	suite.Require().NoError(suite.db.Close())
 }

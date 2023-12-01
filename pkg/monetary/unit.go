@@ -66,6 +66,8 @@ func (u *Unit) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+var _ driver.Valuer = (*NullUnit)(nil)
+
 // NullUnit определяет денежную единицу для использования в пакете
 // `database/sql`.
 type NullUnit struct {

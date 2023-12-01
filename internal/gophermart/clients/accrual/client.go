@@ -13,7 +13,8 @@ import (
 
 	"log/slog"
 
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/domain"
+	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
 
 var defaultOption = &ClientOption{
@@ -55,6 +56,8 @@ func (o *ClientOption) clone() *ClientOption {
 	return &o2
 }
 
+var _ domain.AccrualClient = (*Client)(nil)
+
 // Client определяет HTTP-клиент для запросов в accrual.
 type Client struct {
 	client *http.Client
@@ -91,38 +94,53 @@ func NewClient(addr string, opts *ClientOption) *Client {
 	return c
 }
 
-// OrderInfo возвращает информацию о расчёте начислений баллов лояльности за
-// совершённый заказ.
-func (c *Client) OrderInfo(ctx context.Context, order string) (*service.AccrualOrderInfo, error) {
-	u := c.addr + "/" + path.Join("api", "orders", order)
+// GetAccrualInfo реализует интерфейс domain.AccrualClient.
+func (c *Client) GetAccrualInfo(
+	ctx context.Context,
+	number domain.OrderNumber,
+) (domain.AccrualInfo, error) {
+	u := c.addr + "/" + path.Join("api", "orders", string(number))
 
 	res, err := c.get(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("executing a get request: %w", err)
+		return domain.AccrualInfo{}, fmt.Errorf("executing a get request: %w", err)
 	}
 	defer gracefulClose(res)
 
 	if res.StatusCode != http.StatusOK {
-		return nil, prepareError(res)
+		return domain.AccrualInfo{}, prepareError(res)
 	}
 
-	info, err := decodeOrderInfo(res.Body)
+	var data accrualData
+
+	err = json.NewDecoder(res.Body).Decode(&data)
 	if err != nil {
-		return nil, fmt.Errorf("decoding an order info: %w", err)
+		return domain.AccrualInfo{}, fmt.Errorf("reading a response body: %w", err)
 	}
 
-	slog.Info(info.Order, info.Accrual.String(), info.Status)
-
-	return info, nil
+	return toAccrualInfo(data)
 }
 
-func decodeOrderInfo(r io.Reader) (*service.AccrualOrderInfo, error) {
-	var info service.AccrualOrderInfo
-	err := json.NewDecoder(r).Decode(&info)
+type accrualData struct {
+	Order   string        `json:"order"`
+	Status  string        `json:"status"`
+	Accrual monetary.Unit `json:"accrual"`
+}
+
+func toAccrualInfo(data accrualData) (domain.AccrualInfo, error) {
+	var info domain.AccrualInfo
+	orderNumber, err := domain.NewOrderNumber(data.Order)
 	if err != nil {
-		return nil, err
+		return info, err
 	}
-	return &info, nil
+	status, err := domain.NewAccrualStatus(data.Status)
+	if err != nil {
+		return info, err
+	}
+	info.OrderNumber = orderNumber
+	info.Status = status
+	info.Accrual = data.Accrual
+	return info, nil
 }
 
 func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
