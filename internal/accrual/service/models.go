@@ -30,6 +30,6 @@ type workerGoods struct {
 }
 
 const (
-	percent = "percent"
-	natural = "natural"
+	percent = "PERCENT"
+	natural = "NATURAL"
 )
