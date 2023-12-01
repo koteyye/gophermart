@@ -1,63 +1,52 @@
 -- +goose Up
 -- +goose StatementBegin
-create type order_status as enum ('REGISTERED', 'PROCESSED', 'PROCESSING', 'INVALID');
-comment on type order_status is 'возможные статусы заказа';
+CREATE TYPE order_status AS enum ('REGISTERED', 'PROCESSED', 'PROCESSING', 'INVALID');
 
-create type rewards as enum ('percent', 'natural');
-comment on type rewards is 'возможные типы вознаграждений';
+CREATE TYPE rewards AS enum ('PERCENT', 'NATURAL');
 
-create table orders (
-    id uuid not null default gen_random_uuid() unique,
-    order_number varchar not null,
-    status order_status default 'REGISTERED',
-    accrual int not null default 0,
-    created_at timestamp not null default now(),
-    updated_at timestamp not null default now(),
-    deleted_at timestamp
+CREATE TABLE orders (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY UNIQUE,
+    order_number VARCHAR NOT NULL,
+    status order_status DEFAULT 'REGISTERED',
+    accrual INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP
 );
-comment on table orders is 'зарегистрированные заказы на расчет вознаграждений';
-comment on column orders.order_number is 'номер заказа';
-comment on column orders.status is 'статус заказа';
-comment on column orders.accrual is 'сумма вознаграждения по заказу';
 
-create table matches (
-    id uuid not null default gen_random_uuid() unique,
-    match_name text not null unique,
-    reward int not null,
-    reward_type rewards not null,
-    created_at timestamp not null default now(),
-    updated_at timestamp not null default now(),
-    deleted_at timestamp
+CREATE TABLE matches (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY UNIQUE,
+    match_name TEXT NOT NULL UNIQUE,
+    reward INT NOT NULL,
+    reward_type rewards NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP
 );
-comment on table matches is 'товары с их механиками вознаграждения';
-comment on column matches.match_name is 'название товара';
-comment on column matches.reward is 'сумма вознаграждения';
-comment on column matches.reward_type is 'механика вознаграждения';
 
-create table goods (
-    id uuid not null default gen_random_uuid(),
-    order_id uuid not null,
-    match_id uuid not null,
-    price int not null,
-    accrual int default 0,
-    created_at timestamp not null default now(),
-    updated_at timestamp not null default now(),
-    deleted_at timestamp,
-    foreign key (order_id) references orders(id),
-    foreign key (match_id) references matches(id)
+CREATE TABLE goods (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY UNIQUE,
+    order_id uuid NOT NULL,
+    match_id uuid NOT NULL,
+    price INT NOT NULL,
+    accrual INT DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (match_id) REFERENCES matches(id)
 );
-comment on table goods is 'товары в заказе с их стоимостью и вознаграждением';
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table goods;
+DROP TABLE goods;
 
-drop table matches;
+DROP TABLE matches;
 
-drop table orders;
+DROP TABLE orders;
 
-drop type rewards;
+DROP TYPE rewards;
 
-drop type order_status;
+DROP TYPE order_status;
 -- +goose StatementEnd
