@@ -70,10 +70,7 @@ func (s *Service) CheckMatch(ctx context.Context, matchName string) error {
 }
 
 // CreateMatch создает match в БД
-func (s *Service) CreateMatch(match models.Match) error {
-	ctx, cancel := s.withCancel()
-	defer cancel()
-
+func (s *Service) CreateMatch(ctx context.Context, match *models.Match) error {
 	_, err := s.storage.CreateMatch(ctx, &storage.Match{MatchName: match.MatchName, Reward: match.Reward, Type: storage.RewardType(match.RewardType.Uint())})
 	if err != nil {
 		slog.Error(fmt.Errorf("create match %s err: %w", match.MatchName, err).Error())

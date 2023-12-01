@@ -7,13 +7,14 @@ import (
 
 	"log/slog"
 
+	"github.com/sergeizaitcev/gophermart/deployments/gophermart/migrations"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/clients/accrual"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/config"
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/handlers"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/handler"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/storage/postgres"
 	"github.com/sergeizaitcev/gophermart/pkg/commands"
 	"github.com/sergeizaitcev/gophermart/pkg/httpserver"
+	"github.com/sergeizaitcev/gophermart/pkg/postgres"
 	"github.com/sergeizaitcev/gophermart/pkg/sign"
 )
 
@@ -25,33 +26,36 @@ func Run(ctx context.Context) error {
 }
 
 func runGophermart(ctx context.Context, c *config.Config) error {
+	configureLogger(c)
+
 	signer, err := newSigner(c)
 	if err != nil {
 		return fmt.Errorf("creating a new signer: %w", err)
 	}
 
-	storage, err := postgres.Connect(c)
+	db, err := postgres.Connect(c.DatabaseURI)
 	if err != nil {
-		return fmt.Errorf("creating a new storage: %w", err)
+		return fmt.Errorf("connecting to the postgres: %w", err)
 	}
-	defer storage.Close()
+	defer db.Close()
 
-	err = storage.Up(ctx)
+	err = migrations.Up(ctx, db)
 	if err != nil {
 		return fmt.Errorf("migration up: %w", err)
 	}
 
-	logger := newLogger(c)
+	accrual := accrual.NewClient(c.AccrualSystemAddress, nil)
 
-	service := service.NewService(service.ServiceOptions{
-		Logger:  logger,
-		Accrual: accrual.NewClient(c.AccrualSystemAddress, nil),
-		Storage: storage,
-		Signer:  signer,
+	orders := service.NewOrders(db, accrual)
+	defer orders.Close()
+
+	handler := handler.New(handler.HandlerOptions{
+		Auth:       service.NewAuth(db),
+		Orders:     orders,
+		Users:      service.NewUsers(db),
+		Operations: service.NewOperations(db),
+		Signer:     signer,
 	})
-	defer service.Close()
-
-	handler := handlers.NewHandler(logger, service)
 
 	return httpserver.ListenAndServe(ctx, c.RunAddress, handler)
 }
@@ -64,8 +68,8 @@ func newSigner(c *config.Config) (sign.Signer, error) {
 	return sign.New(secretKey, sign.WithTTL(c.TokenTTL)), nil
 }
 
-func newLogger(c *config.Config) *slog.Logger {
+func configureLogger(c *config.Config) {
 	opts := &slog.HandlerOptions{Level: c.Level}
-	handler := slog.NewTextHandler(os.Stdout, opts)
-	return slog.New(handler)
+	handler := slog.NewJSONHandler(os.Stdout, opts)
+	slog.SetDefault(slog.New(handler))
 }

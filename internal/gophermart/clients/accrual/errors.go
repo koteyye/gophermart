@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sergeizaitcev/gophermart/internal/gophermart/service"
+	"github.com/sergeizaitcev/gophermart/internal/gophermart/domain"
 )
 
 func prepareError(res *http.Response) error {
 	switch res.StatusCode {
 	case http.StatusNoContent:
-		return service.ErrOrderNotRegistered
+		return domain.ErrOrderNotRegistered
 	case http.StatusTooManyRequests:
 		retryAfter, err := strconv.ParseInt(res.Header.Get("Retry-After"), 10, 64)
 		if err != nil {
@@ -26,11 +26,11 @@ func prepareError(res *http.Response) error {
 			return fmt.Errorf("reading a request body: %w", err)
 		}
 
-		return &service.ResourceExhaustedError{
+		return &domain.ResourceExhaustedError{
 			Message:    strings.ToLower(string(data)),
 			RetryAfter: time.Duration(retryAfter) * time.Second,
 		}
 	default: // http.StatusInternalServerError
-		return service.ErrInternalServerError
+		return domain.ErrInternalServerError
 	}
 }

@@ -76,7 +76,7 @@ func (o OrderStatus) String() string {
 	case Processed:
 		return "PROCESSED"
 	}
-	return "unknow"
+	return "UNKNOW"
 }
 
 // Goods структура для создания записи в таблице goods
@@ -118,11 +118,11 @@ const (
 func (r RewardType) String() string {
 	switch r {
 	case Percent:
-		return "percent"
+		return "PERCENT"
 	case Natural:
-		return "natural"
+		return "NATURAL"
 	}
-	return "unknow"
+	return "UNKNOW"
 }
 
 // MatchOut структура для получения записи из таблицы matches
