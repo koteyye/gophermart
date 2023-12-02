@@ -3,9 +3,13 @@ package gophermart
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	"log/slog"
+
+	"golang.org/x/time/rate"
 
 	"github.com/sergeizaitcev/gophermart/deployments/gophermart/migrations"
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/clients/accrual"
@@ -16,6 +20,7 @@ import (
 	"github.com/sergeizaitcev/gophermart/pkg/httpserver"
 	"github.com/sergeizaitcev/gophermart/pkg/postgres"
 	"github.com/sergeizaitcev/gophermart/pkg/sign"
+	"github.com/sergeizaitcev/gophermart/pkg/throttling"
 )
 
 // Run запускает gophermart и блокируется до тех пор, пока не сработает
@@ -26,7 +31,7 @@ func Run(ctx context.Context) error {
 }
 
 func runGophermart(ctx context.Context, c *config.Config) error {
-	configureLogger(c)
+	setupLogger(c)
 
 	signer, err := newSigner(c)
 	if err != nil {
@@ -44,7 +49,7 @@ func runGophermart(ctx context.Context, c *config.Config) error {
 		return fmt.Errorf("migration up: %w", err)
 	}
 
-	accrual := accrual.NewClient(c.AccrualSystemAddress, nil)
+	accrual := newAccrualClient(c)
 
 	orders := service.NewOrders(db, accrual)
 	defer orders.Close()
@@ -60,6 +65,12 @@ func runGophermart(ctx context.Context, c *config.Config) error {
 	return httpserver.ListenAndServe(ctx, c.RunAddress, handler)
 }
 
+func setupLogger(c *config.Config) {
+	opts := &slog.HandlerOptions{Level: c.Level}
+	handler := slog.NewJSONHandler(os.Stdout, opts)
+	slog.SetDefault(slog.New(handler))
+}
+
 func newSigner(c *config.Config) (sign.Signer, error) {
 	secretKey, err := c.SecretKey()
 	if err != nil {
@@ -68,8 +79,13 @@ func newSigner(c *config.Config) (sign.Signer, error) {
 	return sign.New(secretKey, sign.WithTTL(c.TokenTTL)), nil
 }
 
-func configureLogger(c *config.Config) {
-	opts := &slog.HandlerOptions{Level: c.Level}
-	handler := slog.NewJSONHandler(os.Stdout, opts)
-	slog.SetDefault(slog.New(handler))
+func newAccrualClient(c *config.Config) *accrual.Client {
+	limiter := rate.NewLimiter(rate.Every(time.Second), 1)
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+
+	opts := &accrual.ClientOption{
+		Transport: throttling.NewTransport(transport, limiter),
+	}
+
+	return accrual.NewClient(c.AccrualSystemAddress, opts)
 }

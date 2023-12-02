@@ -3,10 +3,12 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 
+	"log/slog"
+
 	"github.com/go-chi/chi/v5"
+
 	"github.com/sergeizaitcev/gophermart/internal/accrual/service"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
 )
@@ -14,7 +16,7 @@ import (
 // handler определяет HTTP-обработчик для accrual
 // реализует интерфейс http.Handler
 type handler struct {
-	logger *slog.Logger
+	logger  *slog.Logger
 	mux     *chi.Mux
 	service *service.Service
 }
@@ -22,7 +24,7 @@ type handler struct {
 // NewHandler возвращает новый экземпляр handler
 func NewHandler(logger *slog.Logger, s *service.Service) http.Handler {
 	r := &handler{
-		logger: logger,
+		logger:  logger,
 		mux:     chi.NewRouter(),
 		service: s,
 	}

@@ -14,6 +14,8 @@ require (
 	golang.org/x/crypto v0.14.0
 )
 
+require golang.org/x/time v0.5.0
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
