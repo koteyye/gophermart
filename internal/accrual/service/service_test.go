@@ -57,6 +57,8 @@ func TestGetOrder(t *testing.T) {
 
 	t.Run("getOrder", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
+			t.Parallel()
+
 			srv := service.NewService(mockStorage)
 
 			mockStorage.EXPECT().
@@ -69,6 +71,8 @@ func TestGetOrder(t *testing.T) {
 		})
 
 		t.Run("empty", func(t *testing.T) {
+			t.Parallel()
+
 			srv := service.NewService(mockStorage)
 
 			mockStorage.EXPECT().
@@ -90,6 +94,8 @@ func TestCheckMatch(t *testing.T) {
 
 	t.Run("checkMatch", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
+			t.Parallel()
+
 			srv := service.NewService(mockStorage)
 
 			mockStorage.EXPECT().
@@ -101,6 +107,8 @@ func TestCheckMatch(t *testing.T) {
 		})
 
 		t.Run("noEmpty", func(t *testing.T) {
+			t.Parallel()
+
 			srv := service.NewService(mockStorage)
 
 			mockStorage.EXPECT().
@@ -121,6 +129,8 @@ func TestCreateMatch(t *testing.T) {
 
 	t.Run("createMatch", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
+			t.Parallel()
+
 			srv := service.NewService(mockStorage)
 
 			mockStorage.EXPECT().
@@ -132,6 +142,8 @@ func TestCreateMatch(t *testing.T) {
 		})
 
 		t.Run("duplicate", func(t *testing.T) {
+			t.Parallel()
+
 			srv := service.NewService(mockStorage)
 
 			mockStorage.EXPECT().
@@ -152,6 +164,8 @@ func TestCheckOrder(t *testing.T) {
 
 	t.Run("getOrder", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
+			t.Parallel()
+
 			srv := service.NewService(mockStorage)
 
 			mockStorage.EXPECT().
@@ -163,6 +177,8 @@ func TestCheckOrder(t *testing.T) {
 		})
 
 		t.Run("noempty", func(t *testing.T) {
+			t.Parallel()
+
 			srv := service.NewService(mockStorage)
 
 			mockStorage.EXPECT().
