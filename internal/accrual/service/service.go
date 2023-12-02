@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"sync"
 
+	"log/slog"
+
 	"github.com/google/uuid"
+
 	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
 	"github.com/sergeizaitcev/gophermart/pkg/monetary"
@@ -25,7 +27,7 @@ func NewService(s storage.Storage) *Service {
 	return &Service{
 		termCh:  make(chan struct{}),
 		storage: s,
-		wg: &sync.WaitGroup{},
+		wg:      &sync.WaitGroup{},
 	}
 }
 
@@ -56,7 +58,8 @@ func (s *Service) GetOrder(ctx context.Context, orderNumber string) (*models.Ord
 	return &models.OrderOut{
 		Number:  order.OrderNumber,
 		Status:  order.Status,
-		Accrual: order.Accrual}, nil
+		Accrual: order.Accrual,
+	}, nil
 }
 
 // CheckMatches проверяет наличие зарегистрированного match в БД
@@ -71,7 +74,14 @@ func (s *Service) CheckMatch(ctx context.Context, matchName string) error {
 
 // CreateMatch создает match в БД
 func (s *Service) CreateMatch(ctx context.Context, match *models.Match) error {
-	_, err := s.storage.CreateMatch(ctx, &storage.Match{MatchName: match.MatchName, Reward: match.Reward, Type: storage.RewardType(match.RewardType.Uint())})
+	_, err := s.storage.CreateMatch(
+		ctx,
+		&storage.Match{
+			MatchName: match.MatchName,
+			Reward:    match.Reward,
+			Type:      storage.RewardType(match.RewardType.Uint()),
+		},
+	)
 	if err != nil {
 		slog.Error(fmt.Errorf("create match %s err: %w", match.MatchName, err).Error())
 		return err
@@ -127,12 +137,16 @@ func (s *Service) CreateOrder(order *models.Order) {
 			continue
 		}
 
-		goods = append(goods, &storage.Goods{MatchID: matches[good.Match].MatchID, Price: good.Price})
+		goods = append(
+			goods,
+			&storage.Goods{MatchID: matches[good.Match].MatchID, Price: good.Price},
+		)
 		workGoods = append(workGoods, &workerGoods{
 			matchID:    matches[good.Match].MatchID,
 			price:      good.Price,
 			reward:     matches[good.Match].Reward.Float64(),
-			rewardType: matches[good.Match].Type})
+			rewardType: matches[good.Match].Type,
+		})
 	}
 
 	orderID, err := s.storage.CreateOrderWithGoods(ctx, order.Number, goods)
@@ -146,27 +160,30 @@ func (s *Service) CreateOrder(order *models.Order) {
 
 // processing выполняет процесс по обработке заказа
 func (s *Service) processing(ctx context.Context, workOrder *workerOrder) {
-	//в бд устанавливаем статус заказа на processing
+	// в бд устанавливаем статус заказа на processing
 	s.updateOrderProcessing(ctx, workOrder.orderID)
 
-	//рассчитывается каждый goods в заказе
+	// рассчитывается каждый goods в заказе
 	workOrderCh := s.calculateOrder(ctx, workOrder)
 
 	for order := range workOrderCh {
 		batchGoods := make([]*storage.Goods, len(order.goods))
 		for i, good := range order.goods {
-			batchGoods[i] = &storage.Goods{MatchID: good.matchID, Price: good.price, Accrual: good.accrual}
+			batchGoods[i] = &storage.Goods{
+				MatchID: good.matchID,
+				Price:   good.price,
+				Accrual: good.accrual,
+			}
 		}
 
-		//в бд обновляются рассчитыванные goods в заказе
+		// в бд обновляются рассчитыванные goods в заказе
 		err := s.storage.BatchUpdateGoods(ctx, order.orderID, batchGoods)
 		if err != nil {
 			slog.Error(fmt.Errorf("batch updated goods err: %w", err).Error())
 		}
 
-		//в бд обновляем общий accrual по заказу и обновляем статус на processed
+		// в бд обновляем общий accrual по заказу и обновляем статус на processed
 		s.updateOrderProcessed(ctx, order)
-		close(workOrderCh)
 	}
 }
 
@@ -199,6 +216,7 @@ func (s *Service) calculateOrder(ctx context.Context, workOrder *workerOrder) ch
 			workOrder.accrual += good.accrual
 		}
 		workOrderCh <- workOrder
+		close(workOrderCh)
 	}()
 
 	return workOrderCh

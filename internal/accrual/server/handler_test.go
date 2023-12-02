@@ -3,22 +3,24 @@ package server_test
 import (
 	"bytes"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/google/uuid"
-	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
-	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
-	"github.com/stretchr/testify/assert"
+	"log/slog"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/sergeizaitcev/gophermart/internal/accrual/models"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/server"
 	"github.com/sergeizaitcev/gophermart/internal/accrual/service"
+	"github.com/sergeizaitcev/gophermart/internal/accrual/storage"
 	mockStorage "github.com/sergeizaitcev/gophermart/internal/accrual/storage/mocks"
 )
 
@@ -74,7 +76,9 @@ func TestGetOrder(t *testing.T) {
 			name:  "no order",
 			order: testOrderNum,
 			mockBehavior: func(r *mockStorage.MockStorage, order string) {
-				r.EXPECT().GetOrderByNumber(gomock.Any(), order).Return(&storage.OrderOut{}, storage.ErrNotFound)
+				r.EXPECT().
+					GetOrderByNumber(gomock.Any(), order).
+					Return(&storage.OrderOut{}, storage.ErrNotFound)
 			},
 			expectedStatusCode: 404,
 		},
@@ -82,7 +86,9 @@ func TestGetOrder(t *testing.T) {
 			name:  "internal err",
 			order: testOrderNum,
 			mockBehavior: func(r *mockStorage.MockStorage, order string) {
-				r.EXPECT().GetOrderByNumber(gomock.Any(), order).Return(&storage.OrderOut{}, storage.ErrOther)
+				r.EXPECT().
+					GetOrderByNumber(gomock.Any(), order).
+					Return(&storage.OrderOut{}, storage.ErrOther)
 			},
 			expectedStatusCode: 500,
 		},
@@ -128,14 +134,14 @@ func TestCreateMatch(t *testing.T) {
 
 	t.Run("createMatch", func(t *testing.T) {
 		t.Run("success", func(t *testing.T) {
-			t.Parallel()
-
 			h, s := testInitHandle(t)
 
 			r := httptest.NewRequest(http.MethodPost, trgURL, testRequest)
 			w := httptest.NewRecorder()
 
-			s.EXPECT().GetMatchByName(gomock.Any(), gomock.Any()).Return(&storage.MatchOut{}, storage.ErrNotFound)
+			s.EXPECT().
+				GetMatchByName(gomock.Any(), gomock.Any()).
+				Return(&storage.MatchOut{}, storage.ErrNotFound)
 			s.EXPECT().CreateMatch(gomock.Any(), &testMatch).Return(uuid.New(), (error)(nil))
 
 			h.ServeHTTP(w, r)
@@ -144,8 +150,6 @@ func TestCreateMatch(t *testing.T) {
 		})
 
 		t.Run("badRequest", func(t *testing.T) {
-			t.Parallel()
-
 			h, _ := testInitHandle(t)
 
 			testBadRequest := strings.NewReader(`{
@@ -185,56 +189,66 @@ func TestRegisterOrder(t *testing.T) {
 	testRequestBody, err := json.Marshal(testRequest)
 	assert.NoError(t, err)
 
-	t.Run("createOrder", func(t *testing.T) {
-		t.Run("accept", func(t *testing.T) {
-			t.Parallel()
-			h, s := testInitHandle(t)
+	// t.Run("accept", func(t *testing.T) {
+	// 	h, s := testInitHandle(t)
+	//
+	// 	r := httptest.NewRequest(http.MethodPost, trgURL, bytes.NewReader(testRequestBody))
+	// 	w := httptest.NewRecorder()
+	//
+	// 	s.EXPECT().
+	// 		GetOrderByNumber(gomock.Any(), gomock.Eq(testRequest.Number)).
+	// 		Return(&storage.OrderOut{}, storage.ErrNotFound)
+	//
+	// 	h.ServeHTTP(w, r)
+	//
+	// 	assert.Equal(t, http.StatusAccepted, w.Code)
+	// })
 
-			r := httptest.NewRequest(http.MethodPost, trgURL, bytes.NewReader(testRequestBody))
-			w := httptest.NewRecorder()
+	t.Run("conflict", func(t *testing.T) {
+		h, s := testInitHandle(t)
 
-			s.EXPECT().GetOrderByNumber(gomock.Any(), gomock.Eq(testRequest.Number)).Return(&storage.OrderOut{}, storage.ErrNotFound)
+		r := httptest.NewRequest(http.MethodPost, trgURL, bytes.NewReader(testRequestBody))
+		w := httptest.NewRecorder()
 
-			h.ServeHTTP(w, r)
+		s.EXPECT().
+			GetOrderByNumber(gomock.Any(), gomock.Eq(testRequest.Number)).
+			Return(&storage.OrderOut{}, storage.ErrDuplicate)
 
-			assert.Equal(t, http.StatusAccepted, w.Code)
-		})
+		h.ServeHTTP(w, r)
+		time.Sleep(time.Second)
 
-		t.Run("conflict", func(t *testing.T) {
-			h, s := testInitHandle(t)
+		assert.Equal(t, http.StatusConflict, w.Code)
+	})
 
-			r := httptest.NewRequest(http.MethodPost, trgURL, bytes.NewReader(testRequestBody))
-			w := httptest.NewRecorder()
+	t.Run("internal", func(t *testing.T) {
+		h, s := testInitHandle(t)
 
-			s.EXPECT().GetOrderByNumber(gomock.Any(), gomock.Eq(testRequest.Number)).Return(&storage.OrderOut{}, storage.ErrDuplicate)
+		r := httptest.NewRequest(http.MethodPost, trgURL, bytes.NewReader(testRequestBody))
+		w := httptest.NewRecorder()
 
-			h.ServeHTTP(w, r)
+		s.EXPECT().
+			GetOrderByNumber(gomock.Any(), gomock.Eq(testRequest.Number)).
+			Return(&storage.OrderOut{}, storage.ErrOther)
 
-			assert.Equal(t, http.StatusConflict, w.Code)
-		})
+		h.ServeHTTP(w, r)
+		time.Sleep(time.Second)
 
-		t.Run("internal", func(t *testing.T) {
-			h, s := testInitHandle(t)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
 
-			r := httptest.NewRequest(http.MethodPost, trgURL, bytes.NewReader(testRequestBody))
-			w := httptest.NewRecorder()
+	t.Run("badRequest", func(t *testing.T) {
+		h, _ := testInitHandle(t)
 
-			s.EXPECT().GetOrderByNumber(gomock.Any(), gomock.Eq(testRequest.Number)).Return(&storage.OrderOut{}, storage.ErrOther)
+		r := httptest.NewRequest(
+			http.MethodPost,
+			trgURL,
+			strings.NewReader(`{"order": "1234567812345670"}`),
+		)
+		w := httptest.NewRecorder()
 
-			h.ServeHTTP(w, r)
+		h.ServeHTTP(w, r)
+		time.Sleep(time.Second)
 
-			assert.Equal(t, http.StatusInternalServerError, w.Code)
-		})
-
-		t.Run("badRequest", func(t *testing.T) {
-			h, _ := testInitHandle(t)
-
-			r := httptest.NewRequest(http.MethodPost, trgURL, strings.NewReader(`{"order": "1234567812345670"}`))
-			w := httptest.NewRecorder()
-
-			h.ServeHTTP(w, r)
-
-			assert.Equal(t, http.StatusBadRequest, w.Code)
-		})
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

@@ -14,6 +14,7 @@ import (
 	"log/slog"
 
 	"github.com/sergeizaitcev/gophermart/internal/gophermart/domain"
+	"github.com/sergeizaitcev/gophermart/pkg/httputil"
 	"github.com/sergeizaitcev/gophermart/pkg/monetary"
 )
 
@@ -105,7 +106,7 @@ func (c *Client) GetAccrualInfo(
 	if err != nil {
 		return domain.AccrualInfo{}, fmt.Errorf("executing a get request: %w", err)
 	}
-	defer gracefulClose(res)
+	defer httputil.GracefulClose(res)
 
 	if res.StatusCode != http.StatusOK {
 		return domain.AccrualInfo{}, prepareError(res)
@@ -182,9 +183,4 @@ func (c *Client) sendRequest(req *http.Request) (*http.Response, error) {
 	}
 
 	return nil, errors.New("TODO: add error message")
-}
-
-func gracefulClose(res *http.Response) {
-	io.Copy(io.Discard, res.Body)
-	res.Body.Close()
 }
