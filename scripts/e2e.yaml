@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  accrual-postgres:
+    image: 'bitnami/postgresql:latest'
+    restart: always
+    environment:
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=postgres
+      - POSTGRESQL_DATABASE=accrual
+
+  accrual:
+    build:
+      dockerfile: ./build/accrual/docker/dockerfile
+      context: ../
+    restart: always
+    environment:
+      - RUN_ADDRESS=:8080
+      - DATABASE_URI=postgres://postgres:postgres@accrual-postgres/accrual?sslmode=disable
+    depends_on:
+      - accrual-postgres
+    ports:
+      - '8080:8080'
+
+  gophermart-postgres:
+    image: 'bitnami/postgresql:latest'
+    restart: always
+    environment:
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=postgres
+      - POSTGRESQL_DATABASE=gophermart
+
+  gophermart:
+    build:
+      dockerfile: ./build/gophermart/docker/dockerfile
+      context: ../
+    restart: always
+    environment:
+      - LOG_LEVEL=DEBUG
+      - RUN_ADDRESS=:8081
+      - DATABASE_URI=postgres://postgres:postgres@gophermart-postgres/gophermart?sslmode=disable
+      - ACCRUAL_SYSTEM_ADDRESS=http://accrual:8080
+    depends_on:
+      - gophermart-postgres
+      - accrual
+    ports:
+      - '8081:8081'
