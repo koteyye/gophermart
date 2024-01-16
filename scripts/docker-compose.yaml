@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  accrual:
+  accrualpostgres:
     image: 'bitnami/postgresql:latest'
     environment:
       - POSTGRESQL_USERNAME=postgres
@@ -9,8 +9,10 @@ services:
       - POSTGRESQL_DATABASE=accrual
     ports:
       - '5432:5432'
+    networks:
+      - mainnetwork
 
-  gophermart:
+  gophermartpostgres:
     image: 'bitnami/postgresql:latest'
     environment:
       - POSTGRESQL_USERNAME=postgres
@@ -18,3 +20,42 @@ services:
       - POSTGRESQL_DATABASE=gophermart
     ports:
       - '5433:5432'
+    networks:
+      - mainnetwork
+
+  gophermart:
+    depends_on:
+      - gophermartpostgres
+    build:
+      dockerfile: ../Dockerfile.Gophermart
+      context: ../
+    networks:
+      - mainnetwork
+    ports:
+      - "8080:8080"
+    environment:
+      - LOG_LEVEL=${gophermartLogLevel}
+      - RUN_ADDRESS=${gophermartRunAddress}
+      - DATABASE_URI=${gophermartDBURI}
+      - ACCRUAL_SYSTEM_ADDRESS=${accrualAddress}
+      - SECRET_KEY_PATH=${secretKeyPath}
+      - TOKEN_TTL=${tokenTTL}
+
+  accrual:
+    depends_on:
+      - accrualpostgres
+    build: 
+      dockerfile: ../Dockerfile.Accrual
+      context: ../
+    networks:
+      - mainnetwork
+    ports:
+      - "8081:8081"
+    environment:
+      - LOG_LEVEL=${accrualLogLevel}
+      - RUN_ADDRESS=${accrualRunAddress}
+      - DATABASE_URI=${accrualDBURI}
+
+networks:
+  mainnetwork:
+    driver: bridge
