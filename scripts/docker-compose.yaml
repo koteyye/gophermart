@@ -11,6 +11,11 @@ services:
       - '5432:5432'
     networks:
       - mainnetwork
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   gophermartpostgres:
     image: 'bitnami/postgresql:latest'
@@ -22,10 +27,16 @@ services:
       - '5433:5432'
     networks:
       - mainnetwork
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   gophermart:
     depends_on:
-      - gophermartpostgres
+      gophermartpostgres:
+        condition: service_healthy
     build:
       dockerfile: ./Dockerfile.Gophermart
       context: ../
@@ -43,7 +54,8 @@ services:
 
   accrual:
     depends_on:
-      - accrualpostgres
+      accrualpostgres:
+        condition: service_healthy
     build: 
       dockerfile: ./Dockerfile.Accrual
       context: ../
@@ -55,6 +67,7 @@ services:
       - LOG_LEVEL=${accrualLogLevel}
       - RUN_ADDRESS=${accrualRunAddress}
       - DATABASE_URI=${accrualDBURI}
+    
 
 networks:
   mainnetwork:
