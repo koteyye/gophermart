@@ -27,7 +27,7 @@ services:
     depends_on:
       - gophermartpostgres
     build:
-      dockerfile: ../Dockerfile.Gophermart
+      dockerfile: ./Dockerfile.Gophermart
       context: ../
     networks:
       - mainnetwork
@@ -45,7 +45,7 @@ services:
     depends_on:
       - accrualpostgres
     build: 
-      dockerfile: ../Dockerfile.Accrual
+      dockerfile: ./Dockerfile.Accrual
       context: ../
     networks:
       - mainnetwork

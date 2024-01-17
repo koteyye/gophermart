@@ -14,7 +14,7 @@ generate:
 
 .PHONY: up
 up:
-	@docker-compose -f ./scripts/docker-compose.yaml up -d
+	@gophermartLogLevel=info gophermartRunAddress="0.0.0.0:8080" gophermartDBURI="postgresql://postgres:postgres@gophermartpostgres:5433/gophermar?sslmode=disable" accrualAddress="localhost:8081" secretKeyPath="./secret_key.txt" tokenTTL=10m accrualLogLevel=info accrualRunAddress=0.0.0.0:8081 accrualDBURI="postgresql://postgres:postgres@accrualpostgres:5432/accrual?sslmode=disable" docker-compose -f ./scripts/docker-compose.yaml up -d
 
 .PHONY: down
 down:
